@@ -23,6 +23,7 @@
 int frameAddressCounter = 0;
 
 std::vector<Sprite> sprites;
+int selectedSpriteIndex = -1;
 
 void fillPage(GeneralPage &);
 
@@ -35,6 +36,8 @@ void popSpriteFrameAddressTextInputs();
 // frames of the sprite
 // if the required fields were filled
 std::tuple<std::string, double, std::vector<std::string>, bool> extractNewSpriteAttributes();
+
+void generateSpritesListWidgets(const Sprite &);
 
 int main() {
   GeneralPage page("main_1", "rui");
@@ -70,6 +73,7 @@ int main() {
           sprite.insertFrame(fileName);
 
         sprites.push_back(sprite);
+        generateSpritesListWidgets(sprite);
       } else {
         std::cerr << "invalid!" << std::endl;
       }
@@ -86,6 +90,9 @@ void fillPage(GeneralPage &page) {
 
   auto spritesAndObjectsRow = std::make_shared<RowLayout>("sprites_and_objects", 0.9, 0.3, 0.0, 0.0, 0.05, 0.02);
 
+  // Sprites Section
+
+  // Create a sprite
   auto spritesColumn = std::make_shared<ColumnLayout>("sprite_frames", 0.4, 0.9, 0.0, 0.0, 0.02, 0.05);
 
   auto spriteAddressColumn =
@@ -100,7 +107,6 @@ void fillPage(GeneralPage &page) {
   auto spriteNameWidget = std::make_shared<TextInputWidget>("sprite_name_text_input");
   spriteNameLeaf->setWidget(spriteNameWidget);
 
-  // spritesColumn->addChild(spriteNameLeaf);
   spriteNameAndFpsRow->addChild(spriteNameLeaf);
 
   auto spriteFpsLeaf = std::make_shared<LeafLayout>("sprite_fps_leaf", 0.45, 0.95, 0.0, 0.0, 0.025, 0.025);
@@ -135,6 +141,11 @@ void fillPage(GeneralPage &page) {
   for (auto i = 0u; i < 10; i++) {
     addSpriteFrameAddressTextInput();
   }
+
+  // List of sprites
+  auto spritesListColumn = std::make_shared<ColumnLayout>("sprites_list_column", 0.3, 0.9, 0.0, 0.0, 0.05, 0.05);
+
+  spritesAndObjectsRow->addChild(spritesListColumn);
 }
 
 void addSpriteFrameAddressTextInput() {
@@ -198,4 +209,17 @@ std::tuple<std::string, double, std::vector<std::string>, bool> extractNewSprite
     return std::make_tuple<std::string, double, std::vector<std::string>, bool>("", 0.0, {}, false);
 
   return std::make_tuple(spriteName, spriteFps, fileNames, true);
+}
+
+void generateSpritesListWidgets(const Sprite &sprite) {
+  auto spritesListColumn = std::dynamic_pointer_cast<ColumnLayout>(RUI::getInstance().getLayout("sprites_list_column"));
+
+  auto spriteLeaf =
+      std::make_shared<LeafLayout>("sprite_list_leaf_" + sprite.getName(), 0.95, 0.2, 0.0, 0.0, 0.025, 0.025);
+
+  auto spriteWidget = std::make_shared<RadioButtonWidget<int>>(
+      "sprite_list_radio_button_" + sprite.getName(), selectedSpriteIndex, sprite.getName(), sprites.size() - 1);
+
+  spriteLeaf->setWidget(spriteWidget);
+  spritesListColumn->addChild(spriteLeaf);
 }
