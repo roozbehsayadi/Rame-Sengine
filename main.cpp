@@ -1,6 +1,8 @@
 
 #include <memory>
 #include <stdlib.h>
+#include <tuple>
+#include <vector>
 
 #include "RUI/RUI.h"
 #include "RUI/layout/ColumnLayout.h"
@@ -16,48 +18,62 @@
 #include "RUI/widgets/elements/ScreenObject.h"
 #include "RUI/window/GeneralPage.h"
 
-void fillPage(GeneralPage &, const std::string &, const std::string &);
-bool showScreen = true, showImage = true, showButton = true, placeholder = false;
-int radioVariable = 1;
+#include "Sprite.h"
+
+int frameAddressCounter = 0;
+
+std::vector<Sprite> sprites;
+
+void fillPage(GeneralPage &);
+
+void addSpriteFrameAddressTextInput();
+void popSpriteFrameAddressTextInputs();
+
+// output:
+// name of the sprite
+// FPS
+// frames of the sprite
+// if the required fields were filled
+std::tuple<std::string, double, std::vector<std::string>, bool> extractNewSpriteAttributes();
 
 int main() {
   GeneralPage page("main_1", "rui");
-  fillPage(page, "1", "img1");
 
-
-  // GeneralPage page2("main_2", "rui2");
-  // fillPage(page2, "2", "img2");
-
-  // auto rui = RUI::getInstance();
   RUI::getInstance().addWindow(&page);
-  // rui.addWindow(&page2);
 
-  int characterCounter = 0;
+  fillPage(page);
 
   RUI::getInstance().render();
+
+  auto addFrameButton =
+      std::dynamic_pointer_cast<ButtonWidget>(RUI::getInstance().getWidget("add_frame_to_sprite").first);
+  auto popFrameButton =
+      std::dynamic_pointer_cast<ButtonWidget>(RUI::getInstance().getWidget("pop_frame_from_sprite").first);
+  auto addSpriteButton =
+      std::dynamic_pointer_cast<ButtonWidget>(RUI::getInstance().getWidget("add_sprite_to_sprites").first);
+
   bool quit = false;
   while (!quit) {
     quit = RUI::getInstance().handleEvents();
 
-    auto pressedKey = RUI::getInstance().getPressedKey("main_1");
-    auto modifiers = RUI::getInstance().getKeyboardModifiers("main_1");
-
-    // do your stuff here. for example:
-    auto button1 = RUI::getInstance().getWidget("button1").first;
-    auto buttonLeaf = RUI::getInstance().getLayout("leaf1");
-    auto leaf1 = RUI::getInstance().getLayout("big leaf1");
-    auto leaf2 = RUI::getInstance().getLayout("big leaf 21");
-    auto screen = std::dynamic_pointer_cast<ScreenWidget>(RUI::getInstance().getWidget("screen").first);
-
-    if (button1->isClicked()) {
-      Rect tempRect = {300.0, 300.0, -1.0, -1.0};
-      screen->insertObject(std::make_shared<ScreenObject>("character_" + std::to_string(characterCounter),
-                                                          "assets/images/enemy.png", tempRect));
-      characterCounter++;
+    if (addFrameButton->isClicked()) {
+      addSpriteFrameAddressTextInput();
     }
-    leaf1->setHidden(!showScreen);
-    leaf2->setHidden(!showImage);
-    buttonLeaf->setHidden(!showButton);
+    if (popFrameButton->isClicked()) {
+      popSpriteFrameAddressTextInputs();
+    }
+    if (addSpriteButton->isClicked()) {
+      auto [spriteName, spriteFPs, spriteFileNames, valid] = extractNewSpriteAttributes();
+      if (valid) {
+        Sprite sprite(spriteName, spriteFPs);
+        for (auto fileName : spriteFileNames)
+          sprite.insertFrame(fileName);
+
+        sprites.push_back(sprite);
+      } else {
+        std::cerr << "invalid!" << std::endl;
+      }
+    }
 
     RUI::getInstance().render();
   }
@@ -65,104 +81,121 @@ int main() {
   return EXIT_SUCCESS;
 }
 
-void fillPage(GeneralPage &page, const std::string &index, const std::string &imageSlug) {
+void fillPage(GeneralPage &page) {
   auto grid = page.getGrid();
 
-  auto r = std::make_shared<RowLayout>("row asli" + index, 0.80, 0.20, 0.0, 0.10, 0.10, 0.05);
-  auto c = std::make_shared<ColumnLayout>("c1" + index, 0.20, 0.30, 0.0, 0.0, 0.04, 0.25);
-  c->addChild(std::make_shared<RowLayout>("row dakheli" + index, 0.80, 0.90, 0.0, 0.0, 0.10, 0.05));
-  r->addChild(c);
-  auto l = std::make_shared<LeafLayout>("leaf" + index, 0.10, 0.50, 0.1, 0.2, 0.025, 0.25);
-  auto button = std::make_shared<ButtonWidget>("button" + index, "Button");
-  l->setWidget(button);
-  r->addChild(l);
+  auto spritesAndObjectsRow = std::make_shared<RowLayout>("sprites_and_objects", 0.9, 0.3, 0.0, 0.0, 0.05, 0.02);
 
-  auto checkboxColumn = std::make_shared<ColumnLayout>("checkbox_column" + index, 0.3, 0.8, 0.0, 0.0, 0.04, 0.0);
-  auto checkboxContainer1 = std::make_shared<LeafLayout>("checkbox_container_1", 1.0, 0.24, 0.0, 0.0, 0.0, 0.0);
-  auto checkBox1 = std::make_shared<CheckboxWidget>("checkbox_1", showScreen, "show screen");
-  checkboxContainer1->setWidget(checkBox1);
-  checkboxColumn->addChild(checkboxContainer1);
+  auto spritesColumn = std::make_shared<ColumnLayout>("sprite_frames", 0.4, 0.9, 0.0, 0.0, 0.02, 0.05);
 
-  auto checkboxContainer2 = std::make_shared<LeafLayout>("checkbox_container_2", 1.0, 0.24, 0.0, 0.0, 0.0, 0.0);
-  auto checkBox2 = std::make_shared<CheckboxWidget>("checkbox_2", showImage, "show image 2");
-  checkboxContainer2->setWidget(checkBox2);
-  checkboxColumn->addChild(checkboxContainer2);
+  auto spriteAddressColumn =
+      std::make_shared<ColumnLayout>("sprite_address_column", 0.95, 0.45, 0.0, 0.0, 0.025, 0.025);
+  spritesColumn->addChild(spriteAddressColumn);
 
-  auto checkboxContainer3 = std::make_shared<LeafLayout>("checkbox_container_3", 1.0, 0.24, 0.0, 0.0, 0.0, 0.0);
-  auto checkBox3 = std::make_shared<CheckboxWidget>("checkbox_3", showButton, "button visibility");
-  checkboxContainer3->setWidget(checkBox3);
-  checkboxColumn->addChild(checkboxContainer3);
+  auto spriteButtonsRow = std::make_shared<RowLayout>("sprite_buttons_column", 0.95, 0.2, 0.0, 0.0, 0.025, 0.025);
 
-  auto checkBoxContainer4 = std::make_shared<LeafLayout>("checkbox_container_4", 1.0, 0.24, 0.0, 0.0, 0.0, 0.0);
-  auto checkBox4 = std::make_shared<CheckboxWidget>("checkbox_4", placeholder, "nothing");
-  checkBox4->setEnabled(false);
-  checkBoxContainer4->setWidget(checkBox4);
-  checkboxColumn->addChild(checkBoxContainer4);
+  auto spriteNameAndFpsRow = std::make_shared<RowLayout>("sprite_name_and_fps_row", 0.95, 0.20, 0.0, 0.0, 0.025, 0.025);
 
-  r->addChild(checkboxColumn);
+  auto spriteNameLeaf = std::make_shared<LeafLayout>("sprite_name_column", 0.45, 0.95, 0.0, 0.0, 0.025, 0.025);
+  auto spriteNameWidget = std::make_shared<TextInputWidget>("sprite_name_text_input");
+  spriteNameLeaf->setWidget(spriteNameWidget);
 
-  auto radioColumn = std::make_shared<ColumnLayout>("radio_column" + index, 0.3, 0.8, 0.0, 0.0, 0.04, 0.0);
-  auto radioContainer1 = std::make_shared<LeafLayout>("radio_container_1", 1.0, 0.25, 0.0, 0.0, 0.0, 0.0);
-  auto radio1 = std::make_shared<RadioButtonWidget<int>>("radio_1", radioVariable, "1", 1);
-  radioContainer1->setWidget(radio1);
-  radioColumn->addChild(radioContainer1);
+  // spritesColumn->addChild(spriteNameLeaf);
+  spriteNameAndFpsRow->addChild(spriteNameLeaf);
 
-  auto radioContainer2 = std::make_shared<LeafLayout>("radio_container_2", 1.0, 0.25, 0.0, 0.0, 0.0, 0.0);
-  auto radio2 = std::make_shared<RadioButtonWidget<int>>("radio_2", radioVariable, "2", 2);
-  radioContainer2->setWidget(radio2);
-  radioColumn->addChild(radioContainer2);
+  auto spriteFpsLeaf = std::make_shared<LeafLayout>("sprite_fps_leaf", 0.45, 0.95, 0.0, 0.0, 0.025, 0.025);
+  auto spriteFpsWidget = std::make_shared<TextInputWidget>("sprite_fps_text_input");
+  spriteFpsLeaf->setWidget(spriteFpsWidget);
 
-  auto radioContainer3 = std::make_shared<LeafLayout>("radio_container_3", 1.0, 0.25, 0.0, 0.0, 0.0, 0.0);
-  auto radio3 = std::make_shared<RadioButtonWidget<int>>("radio_3", radioVariable, "3", 3);
-  radioContainer3->setWidget(radio3);
-  radioColumn->addChild(radioContainer3);
+  spriteNameAndFpsRow->addChild(spriteFpsLeaf);
 
-  r->addChild(radioColumn);
+  spritesColumn->addChild(spriteNameAndFpsRow);
 
-  auto textInputColumn = std::make_shared<ColumnLayout>("text_input_column", 0.25, 0.8, 0.0, 0.0, 0.03, 0.0);
+  spritesColumn->addChild(spriteButtonsRow);
 
-  auto textContainer1 = std::make_shared<LeafLayout>("leaf_text_1", 0.9, 0.2, 0.0, 0.0, 0.05, 0.05);
-  auto textInput1 = std::make_shared<TextInputWidget>("text_input_1");
-  textContainer1->setWidget(textInput1);
-  textInputColumn->addChild(textContainer1);
+  auto spriteAddFrameLeaf = std::make_shared<LeafLayout>("sprite_add_frame_layout", 0.3, 0.9, 0.0, 0.0, 0.016, 0.05);
+  auto spriteAddFrameWidget = std::make_shared<ButtonWidget>("add_frame_to_sprite", "Add Frame");
+  spriteAddFrameLeaf->setWidget(spriteAddFrameWidget);
 
-  auto textContainer2 = std::make_shared<LeafLayout>("leaf_text_2", 0.9, 0.2, 0.0, 0.0, 0.05, 0.05);
-  auto textInput2 = std::make_shared<TextInputWidget>("text_input_2");
-  textContainer2->setWidget(textInput2);
-  textInputColumn->addChild(textContainer2);
+  auto spriteRemoveFrameLeaf = std::make_shared<LeafLayout>("sprite_pop_frame_layout", 0.3, 0.9, 0.0, 0.0, 0.016, 0.05);
+  auto spriteRemoveFrameWidget = std::make_shared<ButtonWidget>("pop_frame_from_sprite", "Pop Frame");
+  spriteRemoveFrameLeaf->setWidget(spriteRemoveFrameWidget);
 
-  auto textContainer3 = std::make_shared<LeafLayout>("leaf_text_3", 0.9, 0.2, 0.0, 0.0, 0.05, 0.05);
-  auto textInput3 = std::make_shared<TextInputWidget>("text_input_3");
-  textContainer3->setWidget(textInput3);
-  textInputColumn->addChild(textContainer3);
+  auto spriteAddSpriteLeaf = std::make_shared<LeafLayout>("sprite_add_sprite_layout", 0.3, 0.9, 0.0, 0.0, 0.016, 0.05);
+  auto spriteAddSpriteWidget = std::make_shared<ButtonWidget>("add_sprite_to_sprites", "Create");
+  spriteAddSpriteLeaf->setWidget(spriteAddSpriteWidget);
 
-  r->addChild(textInputColumn);
+  spriteButtonsRow->addChild(spriteAddFrameLeaf);
+  spriteButtonsRow->addChild(spriteRemoveFrameLeaf);
+  spriteButtonsRow->addChild(spriteAddSpriteLeaf);
 
-  grid->addChild(r);
+  spritesAndObjectsRow->addChild(spritesColumn);
+  grid->addChild(spritesAndObjectsRow);
 
-  auto bigColumn = std::make_shared<ColumnLayout>("big column" + index, 0.80, 0.60, 0.0, 0.0, 0.1, 0.05);
-  auto l2 = std::make_shared<LeafLayout>("big leaf" + index, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0);
+  for (auto i = 0u; i < 10; i++) {
+    addSpriteFrameAddressTextInput();
+  }
+}
 
-  auto screenWidget = std::make_shared<ScreenWidget>("screen");
-  l2->setWidget(screenWidget);
-  bigColumn->addChild(l2);
+void addSpriteFrameAddressTextInput() {
+  auto addressesColumn = std::dynamic_pointer_cast<ColumnLayout>(RUI::getInstance().getLayout("sprite_address_column"));
 
-  Rect tempRect = {50.0, 50.0, -1.0, -1.0};
-  auto screenObject1 = std::make_shared<ScreenObject>("enemy", "assets/images/enemy.png", tempRect);
-  tempRect = {200.0, 200.0, -1.0, -1.0};
-  auto screenObject2 = std::make_shared<ScreenObject>("player", "assets/images/player.png", tempRect);
+  auto leafLayout = std::make_shared<LeafLayout>("sprite_address_layout_" + std::to_string(frameAddressCounter), 0.95,
+                                                 0.2, 0.0, 0.0, 0.025, 0.025);
+  auto widget = std::make_shared<TextInputWidget>("sprite_address_text_input_" + std::to_string(frameAddressCounter));
 
-  screenWidget->insertObject(screenObject1);
-  screenWidget->insertObject(screenObject2);
+  leafLayout->setWidget(widget);
+  addressesColumn->addChild(leafLayout);
 
-  grid->addChild(bigColumn);
+  frameAddressCounter++;
+}
 
-  auto bigColumn2 = std::make_shared<ColumnLayout>("big column 2" + index, 0.80, 0.60, 0.05, 0.05, 0.1, 0.05);
-  auto l3 = std::make_shared<LeafLayout>("big leaf 2" + index, 0.90, 0.90, 0.0, 0.0, 0.0, 0.0);
+void popSpriteFrameAddressTextInputs() {
 
-  auto img2 = std::make_shared<ImageWidget>(imageSlug + "2", "assets/images/" + imageSlug + ".png");
-  l3->setWidget(img2);
-  bigColumn2->addChild(l3);
+  if (frameAddressCounter <= 1)
+    return;
 
-  grid->addChild(bigColumn2);
+  auto addressesColumn = std::dynamic_pointer_cast<ColumnLayout>(RUI::getInstance().getLayout("sprite_address_column"));
+
+  frameAddressCounter--;
+
+  addressesColumn->removeChild("sprite_address_layout_" + std::to_string(frameAddressCounter));
+}
+
+std::tuple<std::string, double, std::vector<std::string>, bool> extractNewSpriteAttributes() {
+  auto spriteNameTextInputWidget =
+      std::dynamic_pointer_cast<TextInputWidget>(RUI::getInstance().getWidget("sprite_name_text_input").first);
+  auto spriteName = spriteNameTextInputWidget->getText();
+
+  if (spriteName == "")
+    return std::make_tuple<std::string, double, std::vector<std::string>, bool>("", 0.0, {}, false);
+
+  auto spriteFpsTextInputWidget =
+      std::dynamic_pointer_cast<TextInputWidget>(RUI::getInstance().getWidget("sprite_fps_text_input").first);
+
+  double spriteFps;
+  try {
+    spriteFps = std::stod(spriteFpsTextInputWidget->getText());
+  } catch (const std::exception &e) {
+    std::cerr << e.what() << std::endl;
+    return std::make_tuple<std::string, double, std::vector<std::string>, bool>("", 0.0, {}, false);
+  }
+
+  if (spriteFps <= 0) {
+    return std::make_tuple<std::string, double, std::vector<std::string>, bool>("", 0.0, {}, false);
+  }
+
+  std::vector<std::string> fileNames;
+  for (auto i = 0u; i < frameAddressCounter; i++) {
+    auto currentTextInput = std::dynamic_pointer_cast<TextInputWidget>(
+        RUI::getInstance().getWidget("sprite_address_text_input_" + std::to_string(i)).first);
+    auto currentAddress = currentTextInput->getText();
+    if (currentAddress != "")
+      fileNames.push_back(currentAddress);
+  }
+
+  if (fileNames.empty())
+    return std::make_tuple<std::string, double, std::vector<std::string>, bool>("", 0.0, {}, false);
+
+  return std::make_tuple(spriteName, spriteFps, fileNames, true);
 }
