@@ -1,4 +1,5 @@
 
+#include <map>
 #include <memory>
 #include <stdlib.h>
 #include <tuple>
@@ -22,8 +23,10 @@
 
 int frameAddressCounter = 0;
 
-std::vector<Sprite> sprites;
-int selectedSpriteIndex = -1;
+std::map<std::string, Sprite> sprites;
+// std::vector<Sprite> sprites;
+std::string selectedSpriteName = "";
+// int selectedSpriteIndex = -1;
 
 void fillPage(GeneralPage &);
 
@@ -38,6 +41,7 @@ void popSpriteFrameAddressTextInputs();
 std::tuple<std::string, double, std::vector<std::string>, bool> extractNewSpriteAttributes();
 
 void generateSpritesListWidgets(const Sprite &);
+void removeSpriteRadioButtonWidget(const std::string &);
 
 int main() {
   GeneralPage page("main_1", "rui");
@@ -54,9 +58,12 @@ int main() {
       std::dynamic_pointer_cast<ButtonWidget>(RUI::getInstance().getWidget("pop_frame_from_sprite").first);
   auto addSpriteButton =
       std::dynamic_pointer_cast<ButtonWidget>(RUI::getInstance().getWidget("add_sprite_to_sprites").first);
+  auto removeSpriteButton =
+      std::dynamic_pointer_cast<ButtonWidget>(RUI::getInstance().getWidget("remove_sprite_button").first);
 
   bool quit = false;
   while (!quit) {
+    // std::cout << selectedSpriteIndex << std::endl;
     quit = RUI::getInstance().handleEvents();
 
     if (addFrameButton->isClicked()) {
@@ -72,10 +79,17 @@ int main() {
         for (auto fileName : spriteFileNames)
           sprite.insertFrame(fileName);
 
-        sprites.push_back(sprite);
+        sprites.insert({sprite.getName(), sprite});
         generateSpritesListWidgets(sprite);
       } else {
         std::cerr << "invalid!" << std::endl;
+      }
+    }
+    if (removeSpriteButton->isClicked()) {
+      if (selectedSpriteName != "") {
+        sprites.erase(selectedSpriteName);
+        removeSpriteRadioButtonWidget(selectedSpriteName);
+        selectedSpriteName = "";
       }
     }
 
@@ -145,6 +159,16 @@ void fillPage(GeneralPage &page) {
   // List of sprites
   auto spritesListColumn = std::make_shared<ColumnLayout>("sprites_list_column", 0.3, 0.9, 0.0, 0.0, 0.05, 0.05);
 
+  auto spritesListRadioButtons =
+      std::make_shared<ColumnLayout>("sprites_list_radio_buttons", 0.95, 0.75, 0.0, 0.0, 0.025, 0.025);
+  spritesListColumn->addChild(spritesListRadioButtons);
+
+  auto spritesListRemoveLeaf = std::make_shared<LeafLayout>("remove_sprite_leaf", 0.25, 0.15, 0.0, 0.0, 0.375, 0.025);
+  auto spritesListRemoveButton = std::make_shared<ButtonWidget>("remove_sprite_button", "Remove");
+  spritesListRemoveLeaf->setWidget(spritesListRemoveButton);
+
+  spritesListColumn->addChild(spritesListRemoveLeaf);
+
   spritesAndObjectsRow->addChild(spritesListColumn);
 }
 
@@ -212,14 +236,21 @@ std::tuple<std::string, double, std::vector<std::string>, bool> extractNewSprite
 }
 
 void generateSpritesListWidgets(const Sprite &sprite) {
-  auto spritesListColumn = std::dynamic_pointer_cast<ColumnLayout>(RUI::getInstance().getLayout("sprites_list_column"));
+  auto spritesListColumn =
+      std::dynamic_pointer_cast<ColumnLayout>(RUI::getInstance().getLayout("sprites_list_radio_buttons"));
 
   auto spriteLeaf =
       std::make_shared<LeafLayout>("sprite_list_leaf_" + sprite.getName(), 0.95, 0.2, 0.0, 0.0, 0.025, 0.025);
 
-  auto spriteWidget = std::make_shared<RadioButtonWidget<int>>(
-      "sprite_list_radio_button_" + sprite.getName(), selectedSpriteIndex, sprite.getName(), sprites.size() - 1);
+  auto spriteWidget = std::make_shared<RadioButtonWidget<std::string>>(
+      "sprite_list_radio_button_" + sprite.getName(), selectedSpriteName, sprite.getName(), sprite.getName());
 
   spriteLeaf->setWidget(spriteWidget);
   spritesListColumn->addChild(spriteLeaf);
+}
+
+void removeSpriteRadioButtonWidget(const std::string &spriteName) {
+  auto spritesListColumn =
+      std::dynamic_pointer_cast<ColumnLayout>(RUI::getInstance().getLayout("sprites_list_radio_buttons"));
+  spritesListColumn->removeChild("sprite_list_leaf_" + spriteName);
 }
