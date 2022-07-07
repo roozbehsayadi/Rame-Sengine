@@ -13,6 +13,7 @@ class Sprite {
   friend class Object;
 
 public:
+  Sprite() {}
   Sprite(const std::string &name, double FPS = 0) : FPS(FPS), name(name) {}
 
   void insertFrame(const std::string &);
