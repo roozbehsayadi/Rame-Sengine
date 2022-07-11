@@ -47,6 +47,18 @@ std::tuple<std::string, double, std::vector<std::string>, bool> extractNewSprite
 void generateSpritesListWidgets(const Sprite &);
 void removeSpriteRadioButtonWidget(const std::string &);
 
+bool isSelectedObjectChanged() {
+  static std::string lastValue = "";
+  if (selectedObjectName == "")
+    return false;
+  const std::string &currentObjectName = objects.find(selectedObjectName)->second.getName();
+  if (lastValue != currentObjectName) {
+    lastValue = currentObjectName;
+    return true;
+  }
+  return false;
+}
+
 int main() {
   GeneralPage page("main_1", "rui");
 
@@ -73,6 +85,9 @@ int main() {
   while (!quit) {
     // std::cout << selectedSpriteIndex << std::endl;
     quit = RUI::getInstance().handleEvents();
+
+    if (isSelectedObjectChanged())
+      selectedSpriteName = objects.find(selectedObjectName)->second.getSpriteName();
 
     if (addFrameButton->isClicked()) {
       addSpriteFrameAddressTextInput();
@@ -109,8 +124,8 @@ int main() {
         auto objectsListColumn =
             std::dynamic_pointer_cast<ColumnLayout>(RUI::getInstance().getLayout("objects_list_column"));
         auto newObjectLeaf = std::make_shared<LeafLayout>("object_leaf_" + objectName, 0.9, 0.2, 0.0, 0.0, 0.05, 0.05);
-        auto newObjectWidget = std::make_shared<RadioButtonWidget<std::string>>("object_select_radio_button_" + objectName,
-                                                                   selectedObjectName, objectName, objectName);
+        auto newObjectWidget = std::make_shared<RadioButtonWidget<std::string>>(
+            "object_select_radio_button_" + objectName, selectedObjectName, objectName, objectName);
         newObjectLeaf->setWidget(newObjectWidget);
         objectsListColumn->addChild(newObjectLeaf);
       }
@@ -220,6 +235,8 @@ void fillPage(GeneralPage &page) {
   objectCreateAndListColumn->addChild(objectListColumn);
 
   spritesAndObjectsRow->addChild(objectCreateAndListColumn);
+
+  // Preview of sprites and objects row
 }
 
 void addSpriteFrameAddressTextInput() {

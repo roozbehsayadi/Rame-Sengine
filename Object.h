@@ -13,6 +13,9 @@ public:
   void setSprite(Sprite &sprite) { this->sprite = sprite; }
   void setName(const std::string &name) { this->name = name; }
 
+  const std::string &getName() const { return this->name; }
+  const std::string &getSpriteName() const { return this->sprite.getName(); }
+
 private:
   Sprite &sprite;
 
