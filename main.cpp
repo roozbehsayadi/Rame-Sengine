@@ -20,6 +20,7 @@
 #include "RUI/window/GeneralPage.h"
 
 #include "Object.h"
+#include "Room.h"
 #include "Sprite.h"
 
 int frameAddressCounter = 0;
@@ -32,6 +33,10 @@ std::string selectedSpriteName = "";
 std::map<std::string, Object> objects;
 std::string selectedObjectName = "";
 
+std::map<std::string, Room> rooms;
+// std::map<std::string, std::shared_ptr<LeafLayout>> roomScreenLayouts;
+std::string selectedRoomName = "";
+
 void fillPage(GeneralPage &);
 
 void addSpriteFrameAddressTextInput();
@@ -43,6 +48,11 @@ void popSpriteFrameAddressTextInputs();
 // frames of the sprite
 // if the required fields were filled
 std::tuple<std::string, double, std::vector<std::string>, bool> extractNewSpriteAttributes();
+
+// output:
+// name of the sprite
+// if the required fields were filled
+std::tuple<std::string, bool> extractNewRoomAttributes();
 
 void generateSpritesListWidgets(const Sprite &);
 void removeSpriteRadioButtonWidget(const std::string &);
@@ -71,6 +81,20 @@ bool isSelectedSpriteChanged() {
   return false;
 }
 
+bool isSelectedRoomChanged() {
+  static std::string lastValue = "";
+  if (selectedRoomName == "") {
+    lastValue = "";
+    return false;
+  }
+  const std::string &currentRoomName = rooms.find(selectedRoomName)->second.getName();
+  if (lastValue != currentRoomName) {
+    lastValue = currentRoomName;
+    return true;
+  }
+  return false;
+}
+
 int main() {
   GeneralPage page("main_1", "rui");
 
@@ -94,6 +118,8 @@ int main() {
       std::dynamic_pointer_cast<TextInputWidget>(RUI::getInstance().getWidget("object_name_text_input").first);
   auto spritePreviewImage =
       std::dynamic_pointer_cast<ImageWidget>(RUI::getInstance().getWidget("sprite_preview_thumbnail").first);
+  auto createRoomButton =
+      std::dynamic_pointer_cast<ButtonWidget>(RUI::getInstance().getWidget("create_room_button").first);
 
   bool quit = false;
   while (!quit) {
@@ -105,6 +131,16 @@ int main() {
 
     if (isSelectedSpriteChanged())
       spritePreviewImage->changeImagePath(sprites.find(selectedSpriteName)->second.getFirstFrame()->getImagePath());
+
+    if (isSelectedRoomChanged()) {
+      for (auto &[roomName, roomObject] : rooms) {
+        auto roomLayout = RUI::getInstance().getLayout("room_screen_layout_" + roomName);
+        if (roomName == selectedRoomName)
+          roomLayout->show();
+        else
+          roomLayout->hide();
+      }
+    }
 
     if (addFrameButton->isClicked()) {
       addSpriteFrameAddressTextInput();
@@ -145,6 +181,31 @@ int main() {
             "object_select_radio_button_" + objectName, selectedObjectName, objectName, objectName);
         newObjectLeaf->setWidget(newObjectWidget);
         objectsListColumn->addChild(newObjectLeaf);
+      }
+    }
+    if (createRoomButton->isClicked()) {
+      auto [roomName, valid] = extractNewRoomAttributes();
+      if (valid) {
+        Room room(roomName);
+        rooms.insert({roomName, room});
+
+        auto currentRoomLayout =
+            std::make_shared<LeafLayout>("room_screen_layout_" + roomName, 0.9, 0.5, 0.0, 0.0, 0.05, 0.025);
+        currentRoomLayout->hide();
+        page.getGrid()->addChild(currentRoomLayout);
+        auto currentRoomScreen = std::make_shared<ScreenWidget>("room_screen_" + roomName);
+        currentRoomLayout->setWidget(currentRoomScreen);
+
+        auto roomListColumn = std::dynamic_pointer_cast<ColumnLayout>(RUI::getInstance().getLayout("room_list_column"));
+        auto newRoomItemLeaf =
+            std::make_shared<LeafLayout>("room_item_leaf_" + roomName, 0.9, 0.2, 0.0, 0.0, 0.05, 0.01);
+        auto newRoomItem = std::make_shared<RadioButtonWidget<std::string>>("room_item_" + roomName, selectedRoomName,
+                                                                            roomName, roomName);
+        newRoomItemLeaf->setWidget(newRoomItem);
+
+        roomListColumn->addChild(newRoomItemLeaf);
+      } else {
+        std::cerr << "invalid room information" << std::endl;
       }
     }
 
@@ -266,6 +327,31 @@ void fillPage(GeneralPage &page) {
 
   spritePreviewImageLeaf->setWidget(spritePreviewImage);
 
+  auto roomListAndButtonsColumn = std::make_shared<ColumnLayout>("room_stuff_column", 0.45, 0.9, 0.0, 0.0, 0.025, 0.05);
+
+  spritePreviewAndRoomListRow->addChild(roomListAndButtonsColumn);
+
+  auto roomListColumn = std::make_shared<ColumnLayout>("room_list_column", 0.9, 0.65, 0.0, 0.0, 0.05, 0.025);
+
+  roomListAndButtonsColumn->addChild(roomListColumn);
+
+  auto roomNameAndButtonRow =
+      std::make_shared<RowLayout>("room_name_and_create_button_row", 0.9, 0.25, 0.0, 0.0, 0.05, 0.025);
+
+  auto createRoomTextInputLeaf =
+      std::make_shared<LeafLayout>("create_room_text_input_leaf", 0.45, 0.9, 0.0, 0.0, 0.025, 0.05);
+  auto createRoomTextInput = std::make_shared<TextInputWidget>("room_name_text_input");
+  createRoomTextInputLeaf->setWidget(createRoomTextInput);
+
+  auto createRoomButtonLeaf = std::make_shared<LeafLayout>("create_room_button_leaf", 0.45, 0.9, 0.0, 0.0, 0.025, 0.05);
+  auto createRoomButton = std::make_shared<ButtonWidget>("create_room_button", "Create Room");
+  createRoomButtonLeaf->setWidget(createRoomButton);
+
+  roomNameAndButtonRow->addChild(createRoomTextInputLeaf);
+  roomNameAndButtonRow->addChild(createRoomButtonLeaf);
+
+  roomListAndButtonsColumn->addChild(roomNameAndButtonRow);
+
   grid->addChild(spritePreviewAndRoomListRow);
 }
 
@@ -330,6 +416,15 @@ std::tuple<std::string, double, std::vector<std::string>, bool> extractNewSprite
     return std::make_tuple<std::string, double, std::vector<std::string>, bool>("", 0.0, {}, false);
 
   return std::make_tuple(spriteName, spriteFps, fileNames, true);
+}
+
+std::tuple<std::string, bool> extractNewRoomAttributes() {
+  auto roomNameTextInput =
+      std::dynamic_pointer_cast<TextInputWidget>(RUI::getInstance().getWidget("room_name_text_input").first);
+  auto enteredRoomName = roomNameTextInput->getText();
+  if (enteredRoomName == "")
+    return {"", false};
+  return {enteredRoomName, true};
 }
 
 void generateSpritesListWidgets(const Sprite &sprite) {

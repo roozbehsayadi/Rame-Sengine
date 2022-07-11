@@ -9,9 +9,15 @@
 
 class Room {
 public:
+  Room(const std::string &name) : name(name) {}
+
+  const std::string &getName() const { return this->name; }
+
   void insertObject(std::shared_ptr<Object>);
 
 private:
+  std::string name;
+
   std::vector<std::shared_ptr<Object>> objects;
 };
 
