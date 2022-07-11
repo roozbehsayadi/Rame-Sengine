@@ -59,6 +59,18 @@ bool isSelectedObjectChanged() {
   return false;
 }
 
+bool isSelectedSpriteChanged() {
+  static std::string lastValue = "";
+  if (selectedSpriteName == "")
+    return false;
+  const std::string &currentSpriteName = sprites.find(selectedSpriteName)->second.getName();
+  if (lastValue != currentSpriteName) {
+    lastValue = currentSpriteName;
+    return true;
+  }
+  return false;
+}
+
 int main() {
   GeneralPage page("main_1", "rui");
 
@@ -80,6 +92,8 @@ int main() {
       std::dynamic_pointer_cast<ButtonWidget>(RUI::getInstance().getWidget("object_create_button").first);
   auto createObjectText =
       std::dynamic_pointer_cast<TextInputWidget>(RUI::getInstance().getWidget("object_name_text_input").first);
+  auto spritePreviewImage =
+      std::dynamic_pointer_cast<ImageWidget>(RUI::getInstance().getWidget("sprite_preview_thumbnail").first);
 
   bool quit = false;
   while (!quit) {
@@ -88,6 +102,9 @@ int main() {
 
     if (isSelectedObjectChanged())
       selectedSpriteName = objects.find(selectedObjectName)->second.getSpriteName();
+
+    if (isSelectedSpriteChanged())
+      spritePreviewImage->changeImagePath(sprites.find(selectedSpriteName)->second.getFirstFrame()->getImagePath());
 
     if (addFrameButton->isClicked()) {
       addSpriteFrameAddressTextInput();
@@ -237,6 +254,19 @@ void fillPage(GeneralPage &page) {
   spritesAndObjectsRow->addChild(objectCreateAndListColumn);
 
   // Preview of sprites and objects row
+  auto spritePreviewAndRoomListRow =
+      std::make_shared<RowLayout>("sprite_preview_and_room_list_row", 0.9, 0.3, 0.0, 0.0, 0.05, 0.02);
+
+  auto spritePreviewImageLeaf =
+      std::make_shared<LeafLayout>("sprite_preview_thumbnail_leaf", 0.45, 0.9, 0.0, 0.0, 0.025, 0.05);
+
+  spritePreviewAndRoomListRow->addChild(spritePreviewImageLeaf);
+
+  auto spritePreviewImage = std::make_shared<ImageWidget>("sprite_preview_thumbnail", "");
+
+  spritePreviewImageLeaf->setWidget(spritePreviewImage);
+
+  grid->addChild(spritePreviewAndRoomListRow);
 }
 
 void addSpriteFrameAddressTextInput() {
