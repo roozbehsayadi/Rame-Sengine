@@ -59,8 +59,10 @@ void removeSpriteRadioButtonWidget(const std::string &);
 
 bool isSelectedObjectChanged() {
   static std::string lastValue = "";
-  if (selectedObjectName == "")
+  if (selectedObjectName == "") {
+    selectedObjectName = "";
     return false;
+  }
   const std::string &currentObjectName = objects.find(selectedObjectName)->second.getName();
   if (lastValue != currentObjectName) {
     lastValue = currentObjectName;
@@ -71,8 +73,10 @@ bool isSelectedObjectChanged() {
 
 bool isSelectedSpriteChanged() {
   static std::string lastValue = "";
-  if (selectedSpriteName == "")
+  if (selectedSpriteName == "") {
+    lastValue = "";
     return false;
+  }
   const std::string &currentSpriteName = sprites.find(selectedSpriteName)->second.getName();
   if (lastValue != currentSpriteName) {
     lastValue = currentSpriteName;
@@ -123,7 +127,6 @@ int main() {
 
   bool quit = false;
   while (!quit) {
-    // std::cout << selectedSpriteIndex << std::endl;
     quit = RUI::getInstance().handleEvents();
 
     if (isSelectedObjectChanged())
@@ -166,6 +169,7 @@ int main() {
         sprites.erase(selectedSpriteName);
         removeSpriteRadioButtonWidget(selectedSpriteName);
         selectedSpriteName = "";
+        spritePreviewImage->changeImagePath("");
       }
     }
     if (createObjectButton->isClicked()) {
