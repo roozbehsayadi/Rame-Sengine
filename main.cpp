@@ -20,8 +20,11 @@
 #include "RUI/window/GeneralPage.h"
 
 #include "Object.h"
+#include "ObjectInstance.h"
 #include "Room.h"
 #include "Sprite.h"
+
+#include "IdGenerator.h"
 
 int frameAddressCounter = 0;
 
@@ -34,8 +37,9 @@ std::map<std::string, Object> objects;
 std::string selectedObjectName = "";
 
 std::map<std::string, Room> rooms;
-// std::map<std::string, std::shared_ptr<LeafLayout>> roomScreenLayouts;
 std::string selectedRoomName = "";
+
+std::map<std::string, ObjectInstace> objectInstances;
 
 void fillPage(GeneralPage &);
 
@@ -118,6 +122,8 @@ int main() {
       std::dynamic_pointer_cast<ButtonWidget>(RUI::getInstance().getWidget("remove_sprite_button").first);
   auto createObjectButton =
       std::dynamic_pointer_cast<ButtonWidget>(RUI::getInstance().getWidget("object_create_button").first);
+  auto insertObjectButton =
+      std::dynamic_pointer_cast<ButtonWidget>(RUI::getInstance().getWidget("insert_object_button").first);
   auto createObjectText =
       std::dynamic_pointer_cast<TextInputWidget>(RUI::getInstance().getWidget("object_name_text_input").first);
   auto spritePreviewImage =
@@ -212,6 +218,29 @@ int main() {
         std::cerr << "invalid room information" << std::endl;
       }
     }
+    if (insertObjectButton->isClicked()) {
+      if (selectedObjectName == "") {
+        std::cerr << "no object is selected" << std::endl;
+      } else if (selectedRoomName == "") {
+        std::cerr << "no room is selected" << std::endl;
+      } else {
+        Rect tempRect = {50.0, 50.0, -1, -1};
+        std::string objectIdTemp = IdGenerator::getId();
+        auto screenObject = std::make_shared<ScreenObject>(
+            selectedObjectName + "_" + objectIdTemp + "_screen",
+            objects.find(selectedObjectName)->second.getSprite().getFirstFrame()->getImagePath(), tempRect);
+        auto selectedRoomWidget = std::dynamic_pointer_cast<ScreenWidget>(
+            RUI::getInstance().getWidget("room_screen_" + selectedRoomName).first);
+        selectedRoomWidget->insertObject(screenObject);
+
+        std::string objectInstaceName = selectedObjectName + "_" + objectIdTemp;
+        ObjectInstace objectInstace(objectInstaceName, objects.find(selectedObjectName)->second.getSprite(),
+                                    screenObject);
+        objectInstances.insert({objectInstaceName, objectInstace});
+
+        std::cout << objectInstances.size() << std::endl;
+      }
+    }
 
     RUI::getInstance().render();
   }
@@ -295,28 +324,36 @@ void fillPage(GeneralPage &page) {
   auto objectCreateAndListColumn =
       std::make_shared<ColumnLayout>("object_creation_and_list_column", 0.34, 0.9, 0.0, 0.0, 0.01, 0.05);
 
-  auto objectCreateColumn = std::make_shared<ColumnLayout>("create_object_column", 0.9, 0.4, 0.0, 0.0, 0.05, 0.05);
+  auto objectCreateRow = std::make_shared<RowLayout>("create_object_row", 0.9, 0.2, 0.0, 0.0, 0.05, 0.05);
 
-  auto objectNameLeaf = std::make_shared<LeafLayout>("object_name_leaf", 0.9, 0.5, 0.0, 0.0, 0.05, 0.05);
+  auto objectNameLeaf = std::make_shared<LeafLayout>("object_name_leaf", 0.7, 0.9, 0.0, 0.0, 0.025, 0.05);
   auto objectNameText = std::make_shared<TextInputWidget>("object_name_text_input");
   objectNameLeaf->setWidget(objectNameText);
 
-  objectCreateColumn->addChild(objectNameLeaf);
+  objectCreateRow->addChild(objectNameLeaf);
 
   auto objectCreateObjectButtonLeaf =
-      std::make_shared<LeafLayout>("object_create_leaf", 0.25, 0.3, 0.0, 0.0, 0.375, 0.05);
+      std::make_shared<LeafLayout>("object_create_leaf", 0.2, 0.9, 0.0, 0.0, 0.025, 0.05);
   auto objectCreateButton = std::make_shared<ButtonWidget>("object_create_button", "Create");
   objectCreateObjectButtonLeaf->setWidget(objectCreateButton);
 
-  objectCreateColumn->addChild(objectCreateObjectButtonLeaf);
+  objectCreateRow->addChild(objectCreateObjectButtonLeaf);
 
-  objectCreateAndListColumn->addChild(objectCreateColumn);
+  objectCreateAndListColumn->addChild(objectCreateRow);
 
-  auto objectListColumn = std::make_shared<ColumnLayout>("objects_list_column", 0.9, 0.4, 0.0, 0.0, 0.05, 0.05);
+  auto objectListColumn = std::make_shared<ColumnLayout>("objects_list_column", 0.9, 0.3, 0.0, 0.0, 0.05, 0.025);
 
   objectCreateAndListColumn->addChild(objectListColumn);
 
   spritesAndObjectsRow->addChild(objectCreateAndListColumn);
+
+  auto insertObjectLeaf = std::make_shared<LeafLayout>("insert_object_leaf", 0.3, 0.2, 0.0, 0.0, 0.35, 0.075);
+
+  auto insertObjectButton = std::make_shared<ButtonWidget>("insert_object_button", "Insert");
+
+  insertObjectLeaf->setWidget(insertObjectButton);
+
+  objectCreateAndListColumn->addChild(insertObjectLeaf);
 
   // Preview of sprites and objects row
   auto spritePreviewAndRoomListRow =

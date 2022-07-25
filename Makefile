@@ -1,6 +1,6 @@
 .PHONY: all run clean lines
 
-all: build/main.o build/Sprite.o build/Object.o build/Room.o
+all: build/main.o build/Sprite.o build/Object.o build/Room.o build/IdGenerator.o
 	cd RUI && make && cp -a build/. ../build/ && cd ..
 	g++ -Ibuild build/*.o -o build/GameSengine.out -Wall -g -O2 -std=c++2a -lSDL2 -lSDL2_ttf -lSDL2_image
 run:
@@ -13,6 +13,8 @@ build/Object.o: Object.h Object.cpp
 	g++ -std=c++2a -c -IRUI -o build/Object.o Object.cpp
 build/Room.o: Room.h Room.cpp
 	g++ -std=c++2a -c -IRUI -o build/Room.o Room.cpp
+build/IdGenerator.o: IdGenerator.h IdGenerator.cpp
+	g++ -std=c++2a -c -IRUI -o build/IdGenerator.o IdGenerator.cpp
 clean:
 	rm -rf build/*.o build/*.gch build/*.out
 lines:

@@ -16,6 +16,8 @@ public:
   const std::string &getName() const { return this->name; }
   const std::string &getSpriteName() const { return this->sprite.getName(); }
 
+  Sprite &getSprite() const { return this->sprite; }
+
 private:
   Sprite &sprite;
 
