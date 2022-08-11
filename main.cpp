@@ -130,6 +130,8 @@ int main() {
       std::dynamic_pointer_cast<ImageWidget>(RUI::getInstance().getWidget("sprite_preview_thumbnail").first);
   auto createRoomButton =
       std::dynamic_pointer_cast<ButtonWidget>(RUI::getInstance().getWidget("create_room_button").first);
+  auto removeSelectedObjectButton =
+      std::dynamic_pointer_cast<ButtonWidget>(RUI::getInstance().getWidget("remove_selected_object_from_room").first);
 
   bool quit = false;
   while (!quit) {
@@ -226,6 +228,7 @@ int main() {
       } else {
         Rect tempRect = {50.0, 50.0, -1, -1};
         std::string objectIdTemp = IdGenerator::getId();
+        std::cout << objectIdTemp << std::endl;
         auto screenObject = std::make_shared<ScreenObject>(
             selectedObjectName + "_" + objectIdTemp + "_screen",
             objects.find(selectedObjectName)->second.getSprite().getFirstFrame()->getImagePath(), tempRect);
@@ -237,8 +240,19 @@ int main() {
         ObjectInstace objectInstace(objectInstaceName, objects.find(selectedObjectName)->second.getSprite(),
                                     screenObject);
         objectInstances.insert({objectInstaceName, objectInstace});
+      }
+    }
 
-        std::cout << objectInstances.size() << std::endl;
+    if (removeSelectedObjectButton->isClicked()) {
+      if (selectedRoomName != "") {
+        auto selectedRoom = std::dynamic_pointer_cast<ScreenWidget>(
+            RUI::getInstance().getWidget("room_screen_" + selectedRoomName).first);
+
+        auto [selectedObjectSlug, selectedObjectValidity] = selectedRoom->getSelectedObjectSlug();
+        if (selectedObjectValidity) {
+          objectInstances.erase(selectedObjectSlug);
+          selectedRoom->removeSelectedObject();
+        }
       }
     }
 
@@ -394,6 +408,14 @@ void fillPage(GeneralPage &page) {
   roomListAndButtonsColumn->addChild(roomNameAndButtonRow);
 
   grid->addChild(spritePreviewAndRoomListRow);
+
+  auto removeSelectedObjectButtonLayout =
+      std::make_shared<LeafLayout>("remove_selected_object_leaf", 0.3, 0.05, 0.0, 0.0, 0.35, 0.01);
+  auto removeSelectedObjectButton =
+      std::make_shared<ButtonWidget>("remove_selected_object_from_room", "Remove Selected Object");
+
+  removeSelectedObjectButtonLayout->setWidget(removeSelectedObjectButton);
+  grid->addChild(removeSelectedObjectButtonLayout);
 }
 
 void addSpriteFrameAddressTextInput() {
