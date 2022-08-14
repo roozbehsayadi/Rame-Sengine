@@ -228,7 +228,6 @@ int main() {
       } else {
         Rect tempRect = {50.0, 50.0, -1, -1};
         std::string objectIdTemp = IdGenerator::getId();
-        std::cout << objectIdTemp << std::endl;
         auto screenObject = std::make_shared<ScreenObject>(
             selectedObjectName + "_" + objectIdTemp + "_screen",
             objects.find(selectedObjectName)->second.getSprite().getFirstFrame()->getImagePath(), tempRect);
