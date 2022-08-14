@@ -202,9 +202,10 @@ int main() {
         rooms.insert({roomName, room});
 
         auto currentRoomLayout =
-            std::make_shared<LeafLayout>("room_screen_layout_" + roomName, 0.9, 0.5, 0.0, 0.0, 0.05, 0.025);
+            std::make_shared<LeafLayout>("room_screen_layout_" + roomName, 0.9, 0.8, 0.0, 0.0, 0.05, 0.05);
         currentRoomLayout->hide();
-        page.getGrid()->addChild(currentRoomLayout);
+        std::dynamic_pointer_cast<Container>(RUI::getInstance().getLayout("room_display_column"))
+            ->addChild(currentRoomLayout);
         auto currentRoomScreen = std::make_shared<ScreenWidget>("room_screen_" + roomName);
         currentRoomLayout->setWidget(currentRoomScreen);
 
@@ -408,13 +409,17 @@ void fillPage(GeneralPage &page) {
 
   grid->addChild(spritePreviewAndRoomListRow);
 
+  auto roomStuff = std::make_shared<ColumnLayout>("room_display_column", 0.9, 0.7, 0.0, 0.0, 0.05, 0.01);
+
   auto removeSelectedObjectButtonLayout =
-      std::make_shared<LeafLayout>("remove_selected_object_leaf", 0.3, 0.05, 0.0, 0.0, 0.35, 0.01);
+      std::make_shared<LeafLayout>("remove_selected_object_leaf", 0.3, 0.08, 0.0, 0.0, 0.35, 0.01);
   auto removeSelectedObjectButton =
       std::make_shared<ButtonWidget>("remove_selected_object_from_room", "Remove Selected Object");
-
   removeSelectedObjectButtonLayout->setWidget(removeSelectedObjectButton);
-  grid->addChild(removeSelectedObjectButtonLayout);
+
+  roomStuff->addChild(removeSelectedObjectButtonLayout);
+
+  grid->addChild(roomStuff);
 }
 
 void addSpriteFrameAddressTextInput() {
