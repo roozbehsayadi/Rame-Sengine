@@ -13,6 +13,24 @@ void Sprite::insertFrame(int index, const std::string &imagePath) {
 
 std::shared_ptr<Image> Sprite::getFrame(int index) const { return this->frames.at(index); }
 
+std::shared_ptr<Image> Sprite::getCurrentFrame() const { return this->frames.at(currentFrame); }
+
+std::shared_ptr<Image> Sprite::getCurrentFrameAndProceed() {
+  if (frames.size() == 0u)
+    return nullptr;
+
+  auto temp = currentFrame;
+  currentFrame = (currentFrame + 1) % frames.size();
+  return frames.at(temp);
+}
+
+void Sprite::proceedFrame() {
+  if (frames.size() == 0u)
+    return;
+
+  currentFrame = (currentFrame + 1) % frames.size();
+}
+
 void Sprite::removeFrame(int index) { frames.erase(frames.begin() + index); }
 
 void Sprite::removeAllFrames() { frames.clear(); }

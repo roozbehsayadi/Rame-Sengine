@@ -20,6 +20,10 @@ public:
   void insertFrame(int, const std::string &);
 
   std::shared_ptr<Image> getFrame(int) const;
+  std::shared_ptr<Image> getCurrentFrame() const;
+  std::shared_ptr<Image> getCurrentFrameAndProceed();
+
+  void proceedFrame();
 
   void removeFrame(int);
   void removeAllFrames();
@@ -35,6 +39,8 @@ public:
 private:
   // TODO get rid of these pointless pointers
   std::vector<std::shared_ptr<Image>> frames;
+
+  int currentFrame;
 
   double FPS;
   std::string name;
