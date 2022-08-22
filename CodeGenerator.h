@@ -22,9 +22,15 @@ public:
 private:
   CodeGenerator() {}
 
+  void generateMainCode() const;
+  void generateMakefile() const;
   void generateBaseClass() const;
 
   std::string folderName;
+
+  static std::string makefileCode;
+
+  static std::string mainCode;
 
   static std::string baseClassDotHCode;
   static std::string baseClassDotCppCode;

@@ -6,7 +6,37 @@ CodeGenerator &CodeGenerator::getInstance() {
   return instance;
 }
 
-void CodeGenerator::generate() const { this->generateBaseClass(); }
+void CodeGenerator::generate() const {
+  this->generateMainCode();
+  this->generateBaseClass();
+  this->generateMakefile();
+}
+
+void CodeGenerator::generateMainCode() const {
+  std::ofstream fout;
+
+  fout.open("generatedGame/main.cpp");
+  if (!fout) {
+    std::cerr << "could not open file generatedGame/main.cpp\n";
+    std::exit(1);
+  }
+
+  fout << CodeGenerator::mainCode;
+  fout.close();
+}
+
+void CodeGenerator::generateMakefile() const {
+  std::ofstream fout;
+
+  fout.open("generatedGame/Makefile");
+  if (!fout) {
+    std::cerr << "could not open file generatedGame/Makefile\n";
+    std::exit(1);
+  }
+
+  fout << CodeGenerator::makefileCode;
+  fout.close();
+}
 
 void CodeGenerator::generateBaseClass() const {
   std::ofstream fout;
@@ -29,6 +59,38 @@ void CodeGenerator::generateBaseClass() const {
   fout << CodeGenerator::baseClassDotCppCode;
   fout.close();
 }
+
+std::string CodeGenerator::makefileCode =
+    R"(.PHONY: all run clean
+
+all: build/main.o build/BaseObjectClass.o
+	g++ -Ibuild build/*.o -o build/Game.out -Wall -g -O2 -std=c++2a -lSDL2 -lSDL2_ttf -lSDL2_image
+
+run:
+	./build/Game.out
+
+build/main.o: main.cpp
+	g++ -std=c++2a -c -IRUI -o build/main.o main.cpp
+
+build/BaseObjectClass.o: BaseObjectClass.h BaseObjectClass.cpp
+	g++ -std=c++2a -c -IRUI -o build/BaseObjectClass.o BaseObjectClass.cpp
+
+clean:
+	rm -rf build/*.o build/*.gch build/*.out
+)";
+
+std::string CodeGenerator::mainCode =
+    R"(
+#include <iostream>
+
+#include "BaseObjectClass.h"
+
+int main() {
+  std::cout << "everything works!" << std::endl;
+
+  return 0;
+}
+)";
 
 std::string CodeGenerator::baseClassDotHCode =
     R"(#ifndef __BASE_OBJECT_CLASS_H
