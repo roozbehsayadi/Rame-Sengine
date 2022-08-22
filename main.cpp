@@ -105,7 +105,7 @@ bool isSelectedRoomChanged() {
 }
 
 int main() {
-  GeneralPage page("main_1", "rui");
+  GeneralPage page("main_1", "Rame Sengine");
 
   RUI::getInstance().addWindow(&page);
 
