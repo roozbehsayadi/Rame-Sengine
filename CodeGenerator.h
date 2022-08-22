@@ -1,6 +1,7 @@
 #ifndef __CODE_GENERATOR_H
 #define __CODE_GENERATIR_H
 
+#include <cstdlib>
 #include <fstream>
 #include <iostream>
 #include <string>
@@ -21,6 +22,8 @@ public:
 
 private:
   CodeGenerator() {}
+
+  void copyRequiredClasses() const;
 
   void generateMainCode() const;
   void generateMakefile() const;

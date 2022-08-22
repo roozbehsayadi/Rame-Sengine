@@ -7,10 +7,13 @@ CodeGenerator &CodeGenerator::getInstance() {
 }
 
 void CodeGenerator::generate() const {
+  this->copyRequiredClasses();
   this->generateMainCode();
   this->generateBaseClass();
   this->generateMakefile();
 }
+
+void CodeGenerator::copyRequiredClasses() const { std::system("cp Sprite.h Sprite.cpp generatedGame/"); }
 
 void CodeGenerator::generateMainCode() const {
   std::ofstream fout;
@@ -103,13 +106,12 @@ std::string CodeGenerator::baseClassDotHCode =
 class BaseObjectClass {
 public:
   // name of the object
-  BaseObjectClass(const std::string &);
+  BaseObjectClass(const std::string &, double, double);
 
   virtual void createEvent();
   virtual void destroyEvent();
   
   virtual void stepEvent();  // runs before drawing
-
 
   // mouse events
 
@@ -140,6 +142,9 @@ public:
 
 private:
   std::string instanceName;
+
+  double x, y;
+  double vx, vy;
 };
 
 #endif // __BASE_OBJECT_CLASS_H
@@ -148,8 +153,10 @@ private:
 std::string CodeGenerator::baseClassDotCppCode = R"(
 #include "BaseObjectClass.h"
 
-BaseObjectClass::BaseObjectClass(const std::string &instanceName) {
+BaseObjectClass::BaseObjectClass(const std::string &instanceName, double x, double y) {
   this->instanceName = instanceName;
+  this->x = x;
+  this->y = y;
 }
 
 void BaseObjectClass::createEvent() {}
