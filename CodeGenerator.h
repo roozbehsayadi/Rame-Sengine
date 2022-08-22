@@ -11,12 +11,17 @@
 // TODO pass the rooms
 class CodeGenerator {
 public:
-  // name of generated codes folder + list of rooms
-  CodeGenerator(const std::string &, std::vector<Room>);
+  static CodeGenerator &getInstance();
 
+  CodeGenerator(CodeGenerator const &) = delete;
+  void operator=(CodeGenerator const &) = delete;
+
+  // TDOO add list of rooms as input of this function
   void generate() const;
 
 private:
+  CodeGenerator() {}
+
   void generateBaseClass() const;
 
   std::string folderName;

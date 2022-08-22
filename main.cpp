@@ -19,6 +19,7 @@
 #include "RUI/widgets/elements/ScreenObject.h"
 #include "RUI/window/GeneralPage.h"
 
+#include "CodeGenerator.h"
 #include "Object.h"
 #include "ObjectInstance.h"
 #include "Room.h"
@@ -132,6 +133,8 @@ int main() {
       std::dynamic_pointer_cast<ButtonWidget>(RUI::getInstance().getWidget("create_room_button").first);
   auto removeSelectedObjectButton =
       std::dynamic_pointer_cast<ButtonWidget>(RUI::getInstance().getWidget("remove_selected_object_from_room").first);
+  auto generateCodebutton =
+      std::dynamic_pointer_cast<ButtonWidget>(RUI::getInstance().getWidget("generate_code_button").first);
 
   bool quit = false;
   while (!quit) {
@@ -254,6 +257,10 @@ int main() {
           selectedRoom->removeSelectedObject();
         }
       }
+    }
+
+    if (generateCodebutton->isClicked()) {
+      CodeGenerator::getInstance().generate();
     }
 
     RUI::getInstance().render();
@@ -420,6 +427,13 @@ void fillPage(GeneralPage &page) {
   roomStuff->addChild(removeSelectedObjectButtonLayout);
 
   grid->addChild(roomStuff);
+
+  auto generateCodeButtonLeaf =
+      std::make_shared<LeafLayout>("generate_code_button_leaf", 0.75, 0.15, 0.0, 0.0, 0.125, 0.05);
+  auto generateCodeButton = std::make_shared<ButtonWidget>("generate_code_button", "Generate Code!");
+  generateCodeButtonLeaf->setWidget(generateCodeButton);
+
+  grid->addChild(generateCodeButtonLeaf);
 }
 
 void addSpriteFrameAddressTextInput() {

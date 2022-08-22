@@ -1,7 +1,10 @@
 
 #include "CodeGenerator.h"
 
-CodeGenerator::CodeGenerator(const std::string &folderName, std::vector<Room> rooms) { this->folderName = folderName; }
+CodeGenerator &CodeGenerator::getInstance() {
+  static CodeGenerator instance;
+  return instance;
+}
 
 void CodeGenerator::generate() const { this->generateBaseClass(); }
 
@@ -27,14 +30,18 @@ void CodeGenerator::generateBaseClass() const {
   fout.close();
 }
 
-std::string CodeGenerator::baseClassDotHCode = R"(
-#ifndef __BASE_OBJECT_CLASS_H
+std::string CodeGenerator::baseClassDotHCode =
+    R"(#ifndef __BASE_OBJECT_CLASS_H
 #define __BASE_OBJECT_CLASS_H
+
+#include <string>
+
+#include "SDL2/SDL_keycode.h"
 
 class BaseObjectClass {
 public:
   // name of the object
-  BaseClass(const std::string &);
+  BaseObjectClass(const std::string &);
 
   virtual void createEvent();
   virtual void destroyEvent();
