@@ -84,7 +84,6 @@ private:
 )";
 
 std::string CodeGenerator::baseClassDotCppCode = R"(
-
 #include "BaseObjectClass.h"
 
 BaseObjectClass::BaseObjectClass(const std::string &instanceName) {
@@ -112,5 +111,4 @@ void BaseObjectClass::keyUp() {}
 
 void BaseObjectClass::keyDownEvent(SDL_Keycode) {}
 void BaseObjectClass::keyUpEvent() {}
-
 )";
