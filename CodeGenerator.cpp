@@ -9,11 +9,12 @@ CodeGenerator &CodeGenerator::getInstance() {
 void CodeGenerator::generate() const {
   this->copyRequiredClasses();
   this->generateMainCode();
+  this->generateGameHandlerClass();
   this->generateBaseClass();
   this->generateMakefile();
 }
 
-void CodeGenerator::copyRequiredClasses() const { std::system("cp Sprite.h Sprite.cpp generatedGame/"); }
+void CodeGenerator::copyRequiredClasses() const { std::system("cp -r Sprite.* data_types/ generatedGame/"); }
 
 void CodeGenerator::generateMainCode() const {
   std::ofstream fout;
@@ -63,10 +64,32 @@ void CodeGenerator::generateBaseClass() const {
   fout.close();
 }
 
+void CodeGenerator::generateGameHandlerClass() const {
+  std::ofstream fout;
+
+  fout.open("generatedGame/GameHandler.h");
+  if (!fout) {
+    std::cerr << "could not open file generatedGame/GameHandler.h\n";
+    std::exit(1);
+  }
+
+  fout << CodeGenerator::gameHandlerDotHCode;
+  fout.close();
+
+  fout.open("generatedGame/GameHandler.cpp");
+  if (!fout) {
+    std::cerr << "could not open file generatedGame/GameHandler.cpp\n";
+    std::exit(1);
+  }
+
+  fout << CodeGenerator::gameHandlerDotCppCode;
+  fout.close();
+}
+
 std::string CodeGenerator::makefileCode =
     R"(.PHONY: all run clean
 
-all: build/main.o build/BaseObjectClass.o
+all: build/main.o build/BaseObjectClass.o build/Sprite.o build/Image.o
 	g++ -Ibuild build/*.o -o build/Game.out -Wall -g -O2 -std=c++2a -lSDL2 -lSDL2_ttf -lSDL2_image
 
 run:
@@ -77,6 +100,12 @@ build/main.o: main.cpp
 
 build/BaseObjectClass.o: BaseObjectClass.h BaseObjectClass.cpp
 	g++ -std=c++2a -c -IRUI -o build/BaseObjectClass.o BaseObjectClass.cpp
+
+build/Sprite.o: Sprite.h Sprite.cpp
+	g++ -std=c++2a -c -IRUI -o build/Sprite.o Sprite.cpp
+
+build/Image.o: data_types/Image.h data_types/Image.cpp
+	g++ -std=c++2a -c -IRUI -o build/Image.o data_types/Image.cpp
 
 clean:
 	rm -rf build/*.o build/*.gch build/*.out
@@ -209,4 +238,42 @@ void BaseObjectClass::collidedWith(std::shared_ptr<BaseObjectClass>) {}
 
 void BaseObjectClass::keyDownEvent(SDL_Keycode) {}
 void BaseObjectClass::keyUpEvent() {}
+)";
+
+std::string CodeGenerator::gameHandlerDotHCode =
+    R"(#ifndef __GAME_HANDLER_H
+#define __GAME_HANDLER_H
+
+#include <map>
+#include <memory>
+#include <string>
+#include <vector>
+
+#include "BaseObjectClass.h"
+
+class GameHandler {
+public:
+  // Arguments:
+  // - room name
+  // - the object itself
+  void addObject(const std::string &, std::shared_ptr<BaseObjectClass>);
+
+private:
+  // room name -> its objects
+  std::map<std::string, std::vector<std::shared_ptr<BaseObjectClass>>> gameObjects;
+};
+
+#endif // __GAME_HANDLER_H
+)";
+
+std::string CodeGenerator::gameHandlerDotCppCode =
+    R"(
+#include "GameHandler.h"
+
+void GameHandler::addObject(const std::string &roomName, std::shared_ptr<BaseObjectClass> object) {
+  if (!gameObjects.contains(roomName))
+    gameObjects.insert({roomName, {}});
+  else
+    gameObjects.at(roomName).push_back(object);
+}
 )";

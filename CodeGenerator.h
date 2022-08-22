@@ -28,6 +28,7 @@ private:
   void generateMainCode() const;
   void generateMakefile() const;
   void generateBaseClass() const;
+  void generateGameHandlerClass() const;
 
   std::string folderName;
 
@@ -37,6 +38,9 @@ private:
 
   static std::string baseClassDotHCode;
   static std::string baseClassDotCppCode;
+
+  static std::string gameHandlerDotHCode;
+  static std::string gameHandlerDotCppCode;
 };
 
 #endif // __CODE_GENERATOR_H
