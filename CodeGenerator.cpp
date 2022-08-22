@@ -100,18 +100,36 @@ std::string CodeGenerator::baseClassDotHCode =
 #define __BASE_OBJECT_CLASS_H
 
 #include <string>
+#include <utility>
 
 #include "SDL2/SDL_keycode.h"
+
+#include "Sprite.h"
 
 class BaseObjectClass {
 public:
   // name of the object
-  BaseObjectClass(const std::string &, double, double);
+  BaseObjectClass(const std::string &, const std::string &, Sprite &, double, double);
+
+  const std::string &getObjectName() const { return this->objectName; }
+  const std::string &getInstanceName() const { return this->instanceName; }
+
+  std::pair<double, double> getPosition() const { return {this->x, this->y}; }
+  void setPosition(std::pair<double, double> newPosition) {
+    this->x = newPosition.first;
+    this->y = newPosition.second;
+  }
+
+  std::pair<double, double> getVelocity() const { return {this->vx, this->vy}; }
+  void setVelocity(std::pair<double, double> newVelocity) {
+    this->vx = newVelocity.first;
+    this->vy = newVelocity.second;
+  }
 
   virtual void createEvent();
   virtual void destroyEvent();
-  
-  virtual void stepEvent();  // runs before drawing
+
+  virtual void stepEvent(); // runs before drawing
 
   // mouse events
 
@@ -135,16 +153,22 @@ public:
 
   // end of keyboard events
 
-  // TODO add collision events
+  virtual void collidedWith(std::shared_ptr<BaseObjectClass>);
 
   virtual void keyDownEvent(SDL_Keycode);
   virtual void keyUpEvent();
 
 private:
+  // TODO maybe change objectName to an enum
+  std::string objectName;
   std::string instanceName;
+
+  Sprite sprite;
 
   double x, y;
   double vx, vy;
+
+  bool toBeDestroyed = false;
 };
 
 #endif // __BASE_OBJECT_CLASS_H
@@ -153,8 +177,11 @@ private:
 std::string CodeGenerator::baseClassDotCppCode = R"(
 #include "BaseObjectClass.h"
 
-BaseObjectClass::BaseObjectClass(const std::string &instanceName, double x, double y) {
+BaseObjectClass::BaseObjectClass(const std::string &objectName, const std::string &instanceName, Sprite &sprite,
+                                 double x, double y) {
+  this->objectName = objectName;
   this->instanceName = instanceName;
+  this->sprite = sprite;
   this->x = x;
   this->y = y;
 }
@@ -177,6 +204,8 @@ void BaseObjectClass::mouseLeave() {}
 
 void BaseObjectClass::keyDown() {}
 void BaseObjectClass::keyUp() {}
+
+void BaseObjectClass::collidedWith(std::shared_ptr<BaseObjectClass>) {}
 
 void BaseObjectClass::keyDownEvent(SDL_Keycode) {}
 void BaseObjectClass::keyUpEvent() {}
