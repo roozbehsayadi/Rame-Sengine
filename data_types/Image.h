@@ -11,6 +11,9 @@ class Image {
 public:
   Image(const std::string &imagePath) : imagePath(imagePath) {}
   ~Image() { SDL_DestroyTexture(texture); }
+  Image(const Image &);
+
+  const Image &operator=(const Image &);
 
   // TODO add copy constructor (bevause of texture)
 
