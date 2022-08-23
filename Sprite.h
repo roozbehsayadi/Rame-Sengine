@@ -14,7 +14,13 @@ class Sprite {
 
 public:
   Sprite() {}
-  Sprite(const std::string &name, double FPS = 0.0) : FPS(FPS), name(name) {}
+  Sprite(const std::string &name, double FPS = 0.0, std::vector<std::string> frames = {}) : FPS(FPS), name(name) {
+    if (!frames.empty()) {
+      for (auto imagePath : frames) {
+        this->insertFrame(imagePath);
+      }
+    }
+  }
 
   void insertFrame(const std::string &);
   void insertFrame(int, const std::string &);
@@ -22,6 +28,7 @@ public:
   std::shared_ptr<Image> getFrame(int) const;
   std::shared_ptr<Image> getCurrentFrame() const;
   std::shared_ptr<Image> getCurrentFrameAndProceed();
+  std::vector<std::string> getFramePaths() const;
 
   void proceedFrame();
 

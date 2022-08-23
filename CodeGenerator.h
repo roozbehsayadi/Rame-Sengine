@@ -1,6 +1,7 @@
 #ifndef __CODE_GENERATOR_H
 #define __CODE_GENERATIR_H
 
+#include <cstdio>
 #include <cstdlib>
 #include <fstream>
 #include <iostream>
@@ -33,11 +34,15 @@ private:
   void generateBaseClass() const;
   void generateClassForObjects(std::map<std::string, Room>) const;
 
-  void generateGameHandlerClass() const;
+  void generateGameHandlerClass(std::map<std::string, Room>) const;
+  const std::string generateGameHandlerIncludes(std::map<std::string, Room>) const;
+
+  const std::string buildCreateObjectsSnippet(std::map<std::string, Room>) const;
 
   // some utils
   static std::set<std::string> extractObjectNamesFromRooms(std::map<std::string, Room>);
   static void replaceString(std::string &, const std::string &, const std::string &);
+  static std::string vectorToString(std::vector<std::string>);
 
   std::string folderName;
 

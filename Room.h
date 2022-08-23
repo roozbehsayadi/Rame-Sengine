@@ -5,7 +5,7 @@
 #include <memory>
 #include <vector>
 
-#include "Object.h"
+#include "ObjectInstance.h"
 
 class Room {
 public:
@@ -13,13 +13,13 @@ public:
 
   const std::string &getName() const { return this->name; }
 
-  void insertObject(std::shared_ptr<Object>);
-  std::vector<std::shared_ptr<Object>> getObjects() const { return this->objects; }
+  void insertObject(std::shared_ptr<ObjectInstace>);
+  std::vector<std::shared_ptr<ObjectInstace>> getObjects() const { return this->objects; }
 
 private:
   std::string name;
 
-  std::vector<std::shared_ptr<Object>> objects;
+  std::vector<std::shared_ptr<ObjectInstace>> objects;
 };
 
 #endif // __ROOM_H

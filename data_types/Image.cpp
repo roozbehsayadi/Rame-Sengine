@@ -3,7 +3,10 @@
 
 Image::Image(const Image &other) { this->imagePath = other.getImagePath(); }
 
-const Image &Image::operator=(const Image &other) { this->imagePath = other.imagePath; }
+const Image &Image::operator=(const Image &other) {
+  this->imagePath = other.imagePath;
+  return *this;
+}
 
 SDL_Texture *Image::getTexture(SDL_Renderer *renderer) {
   if (texture == nullptr) {

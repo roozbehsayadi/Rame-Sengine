@@ -186,7 +186,7 @@ int main() {
     if (createObjectButton->isClicked()) {
       std::string objectName = createObjectText->getText();
       if (objectName != "" && selectedSpriteName != "") {
-        Object object("object_" + objectName, sprites[selectedSpriteName]);
+        Object object(objectName, "object_" + objectName, sprites[selectedSpriteName]);
         objects.insert({objectName, object});
 
         auto objectsListColumn =
@@ -241,9 +241,10 @@ int main() {
 
         std::string objectInstaceName = selectedObjectName + "_" + objectIdTemp;
 
+        std::cout << selectedObjectName << " " << objectInstaceName << std::endl;
         ObjectInstace objectInstace(selectedObjectName, objectInstaceName,
                                     objects.find(selectedObjectName)->second.getSprite(), screenObject);
-        rooms.find(selectedRoomName)->second.insertObject(std::make_shared<Object>(objectInstace));
+        rooms.find(selectedRoomName)->second.insertObject(std::make_shared<ObjectInstace>(objectInstace));
         objectInstances.insert({objectInstaceName, objectInstace});
       }
     }

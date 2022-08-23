@@ -24,6 +24,13 @@ std::shared_ptr<Image> Sprite::getCurrentFrameAndProceed() {
   return frames.at(temp);
 }
 
+std::vector<std::string> Sprite::getFramePaths() const {
+  std::vector<std::string> returnValue = {};
+  for (auto frame : frames)
+    returnValue.push_back(frame->getImagePath());
+  return returnValue;
+}
+
 void Sprite::proceedFrame() {
   if (frames.size() == 0u)
     return;
