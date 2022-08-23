@@ -66,9 +66,33 @@ void CodeGenerator::generateBaseClass() const {
 }
 
 void CodeGenerator::generateClassForObjects(std::map<std::string, Room> rooms) const {
-  auto objectNames = this->extractObjectNamesFromRooms(rooms);
-  for (auto itr : objectNames)
-    std::cout << itr << std::endl;
+  auto objectNames = CodeGenerator::extractObjectNamesFromRooms(rooms);
+  for (auto objectName : objectNames) {
+    std::string classDotHCode = CodeGenerator::objectClassDotHCode;
+    CodeGenerator::replaceString(classDotHCode, "${OBJECT_NAME}", objectName);
+    std::string classDotCppCode = CodeGenerator::objectClassDotCppCode;
+    CodeGenerator::replaceString(classDotCppCode, "${OBJECT_NAME}", objectName);
+
+    std::ofstream fout;
+
+    fout.open("generatedGame/" + objectName + "_ObjectClass.h");
+    if (!fout) {
+      std::cerr << "could not open file generatedGame/" + objectName + "_ObjectClass.h";
+      std::exit(1);
+    }
+
+    fout << classDotHCode;
+    fout.close();
+
+    fout.open("generatedGame/" + objectName + "_ObjectClass.cpp");
+    if (!fout) {
+      std::cerr << "could not open file generatedGame/" + objectName + "_ObjectClass.cpp";
+      std::exit(1);
+    }
+
+    fout << classDotCppCode;
+    fout.close();
+  }
 }
 
 void CodeGenerator::generateGameHandlerClass() const {
@@ -93,7 +117,7 @@ void CodeGenerator::generateGameHandlerClass() const {
   fout.close();
 }
 
-std::set<std::string> CodeGenerator::extractObjectNamesFromRooms(std::map<std::string, Room> rooms) const {
+std::set<std::string> CodeGenerator::extractObjectNamesFromRooms(std::map<std::string, Room> rooms) {
   std::set<std::string> returnValue = {};
   for (auto [roomName, room] : rooms) {
     auto roomObjects = room.getObjects();
@@ -101,6 +125,16 @@ std::set<std::string> CodeGenerator::extractObjectNamesFromRooms(std::map<std::s
       returnValue.insert(object->getName());
   }
   return returnValue;
+}
+
+void CodeGenerator::replaceString(std::string &text, const std::string &from, const std::string &to) {
+  if (from.empty())
+    return;
+  size_t startPos = 0;
+  while ((startPos = text.find(from, startPos)) != std::string::npos) {
+    text.replace(startPos, from.length(), to);
+    startPos += to.length();
+  }
 }
 
 std::string CodeGenerator::makefileCode =
@@ -255,6 +289,36 @@ void BaseObjectClass::collidedWith(std::shared_ptr<BaseObjectClass>) {}
 
 void BaseObjectClass::keyDownEvent(SDL_Keycode) {}
 void BaseObjectClass::keyUpEvent() {}
+)";
+
+std::string CodeGenerator::objectClassDotHCode =
+    R"(#ifndef __${OBJECT_NAME}_OBJECT_CLASS_H
+#define __${OBJECT_NAME}_OBJECT_CLASS_H
+
+#include <string>
+#include <utility>
+
+#include "SDL2/SDL_keycode.h"
+
+#include "BaseObjectClass.h"
+#include "Sprite.h"
+
+class ${OBJECT_NAME}_ObjectClass : public BaseObjectClass {
+public:
+  using BaseObjectClass::BaseObjectClass;
+
+  // override events here by using BaseObjectClass's virtual functions
+
+private:
+};
+
+#endif // __${OBJECT_NAME}_OBJECT_CLASS_H
+)";
+
+std::string CodeGenerator::objectClassDotCppCode = R"(
+#include "${OBJECT_NAME}_ObjectClass.h"
+
+// override events here by using BaseObjectClass's virtual functions
 )";
 
 std::string CodeGenerator::gameHandlerDotHCode =

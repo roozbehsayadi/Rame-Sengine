@@ -35,7 +35,9 @@ private:
 
   void generateGameHandlerClass() const;
 
-  std::set<std::string> extractObjectNamesFromRooms(std::map<std::string, Room>) const;
+  // some utils
+  static std::set<std::string> extractObjectNamesFromRooms(std::map<std::string, Room>);
+  static void replaceString(std::string &, const std::string &, const std::string &);
 
   std::string folderName;
 
@@ -45,6 +47,9 @@ private:
 
   static std::string baseClassDotHCode;
   static std::string baseClassDotCppCode;
+
+  static std::string objectClassDotHCode;
+  static std::string objectClassDotCppCode;
 
   static std::string gameHandlerDotHCode;
   static std::string gameHandlerDotCppCode;
