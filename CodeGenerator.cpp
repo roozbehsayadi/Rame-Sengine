@@ -147,16 +147,16 @@ run:
 	./build/Game.out
 
 build/main.o: main.cpp
-	g++ -std=c++2a -c -IRUI -o build/main.o main.cpp
+	g++ -std=c++2a -c -I. -o build/main.o main.cpp
 
 build/BaseObjectClass.o: BaseObjectClass.h BaseObjectClass.cpp
-	g++ -std=c++2a -c -IRUI -o build/BaseObjectClass.o BaseObjectClass.cpp
+	g++ -std=c++2a -c -I. -o build/BaseObjectClass.o BaseObjectClass.cpp
 
 build/Sprite.o: Sprite.h Sprite.cpp
-	g++ -std=c++2a -c -IRUI -o build/Sprite.o Sprite.cpp
+	g++ -std=c++2a -c -I. -o build/Sprite.o Sprite.cpp
 
 build/Image.o: data_types/Image.h data_types/Image.cpp
-	g++ -std=c++2a -c -IRUI -o build/Image.o data_types/Image.cpp
+	g++ -std=c++2a -c -I. -o build/Image.o data_types/Image.cpp
 
 clean:
 	rm -rf build/*.o build/*.gch build/*.out
