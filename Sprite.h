@@ -14,7 +14,7 @@ class Sprite {
 
 public:
   Sprite() {}
-  Sprite(const std::string &name, double FPS = 0) : FPS(FPS), name(name) {}
+  Sprite(const std::string &name, double FPS = 0.0) : FPS(FPS), name(name) {}
 
   void insertFrame(const std::string &);
   void insertFrame(int, const std::string &);
