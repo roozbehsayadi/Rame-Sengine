@@ -14,6 +14,7 @@ public:
   const std::string &getName() const { return this->name; }
 
   void insertObject(std::shared_ptr<Object>);
+  std::vector<std::shared_ptr<Object>> getObjects() const { return this->objects; }
 
 private:
   std::string name;

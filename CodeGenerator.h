@@ -4,6 +4,8 @@
 #include <cstdlib>
 #include <fstream>
 #include <iostream>
+#include <map>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -18,7 +20,7 @@ public:
   void operator=(CodeGenerator const &) = delete;
 
   // TDOO add list of rooms as input of this function
-  void generate() const;
+  void generate(std::map<std::string, Room>) const;
 
 private:
   CodeGenerator() {}
@@ -27,8 +29,13 @@ private:
 
   void generateMainCode() const;
   void generateMakefile() const;
+
   void generateBaseClass() const;
+  void generateClassForObjects(std::map<std::string, Room>) const;
+
   void generateGameHandlerClass() const;
+
+  std::set<std::string> extractObjectNamesFromRooms(std::map<std::string, Room>) const;
 
   std::string folderName;
 

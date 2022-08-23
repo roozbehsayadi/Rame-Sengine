@@ -6,9 +6,10 @@ CodeGenerator &CodeGenerator::getInstance() {
   return instance;
 }
 
-void CodeGenerator::generate() const {
+void CodeGenerator::generate(std::map<std::string, Room> rooms) const {
   this->copyRequiredClasses();
   this->generateMainCode();
+  this->generateClassForObjects(rooms);
   this->generateGameHandlerClass();
   this->generateBaseClass();
   this->generateMakefile();
@@ -64,6 +65,12 @@ void CodeGenerator::generateBaseClass() const {
   fout.close();
 }
 
+void CodeGenerator::generateClassForObjects(std::map<std::string, Room> rooms) const {
+  auto objectNames = this->extractObjectNamesFromRooms(rooms);
+  for (auto itr : objectNames)
+    std::cout << itr << std::endl;
+}
+
 void CodeGenerator::generateGameHandlerClass() const {
   std::ofstream fout;
 
@@ -84,6 +91,16 @@ void CodeGenerator::generateGameHandlerClass() const {
 
   fout << CodeGenerator::gameHandlerDotCppCode;
   fout.close();
+}
+
+std::set<std::string> CodeGenerator::extractObjectNamesFromRooms(std::map<std::string, Room> rooms) const {
+  std::set<std::string> returnValue = {};
+  for (auto [roomName, room] : rooms) {
+    auto roomObjects = room.getObjects();
+    for (auto &object : roomObjects)
+      returnValue.insert(object->getName());
+  }
+  return returnValue;
 }
 
 std::string CodeGenerator::makefileCode =

@@ -240,8 +240,10 @@ int main() {
         selectedRoomWidget->insertObject(screenObject);
 
         std::string objectInstaceName = selectedObjectName + "_" + objectIdTemp;
-        ObjectInstace objectInstace(objectInstaceName, objects.find(selectedObjectName)->second.getSprite(),
-                                    screenObject);
+
+        ObjectInstace objectInstace(selectedObjectName, objectInstaceName,
+                                    objects.find(selectedObjectName)->second.getSprite(), screenObject);
+        rooms.find(selectedRoomName)->second.insertObject(std::make_shared<Object>(objectInstace));
         objectInstances.insert({objectInstaceName, objectInstace});
       }
     }
@@ -260,7 +262,7 @@ int main() {
     }
 
     if (generateCodebutton->isClicked()) {
-      CodeGenerator::getInstance().generate();
+      CodeGenerator::getInstance().generate(rooms);
     }
 
     RUI::getInstance().render();
