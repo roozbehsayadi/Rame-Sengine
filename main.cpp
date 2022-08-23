@@ -191,7 +191,7 @@ int main() {
 
         auto objectsListColumn =
             std::dynamic_pointer_cast<ColumnLayout>(RUI::getInstance().getLayout("objects_list_column"));
-        auto newObjectLeaf = std::make_shared<LeafLayout>("object_leaf_" + objectName, 0.9, 0.2, 0.0, 0.0, 0.05, 0.05);
+        auto newObjectLeaf = std::make_shared<LeafLayout>("object_leaf_" + objectName, 0.9, 0.3, 0.0, 0.0, 0.05, 0.05);
         auto newObjectWidget = std::make_shared<RadioButtonWidget<std::string>>(
             "object_select_radio_button_" + objectName, selectedObjectName, objectName, objectName);
         newObjectLeaf->setWidget(newObjectWidget);
