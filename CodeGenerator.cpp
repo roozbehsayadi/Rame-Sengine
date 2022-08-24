@@ -48,7 +48,15 @@ void CodeGenerator::generateMakefile(std::map<std::string, Room> rooms) const {
     std::exit(1);
   }
 
-  fout << CodeGenerator::makefileCode;
+  std::string temp = CodeGenerator::makefileCode;
+  auto objectNames = CodeGenerator::extractObjectNamesFromRooms(rooms);
+
+  CodeGenerator::replaceString(temp, "${OBJECTS_OBJECT_FILES}",
+                               CodeGenerator::buildMakefileTargetsForObjects(objectNames));
+  CodeGenerator::replaceString(temp, "${BUILD_OBJECTS_OBJECT_FILES}",
+                               CodeGenerator::buildMakefileBuildCommandsForObjects(objectNames));
+
+  fout << temp;
   fout.close();
 }
 
@@ -490,13 +498,10 @@ std::string CodeGenerator::gameHandlerDotCppCode =
 void GameHandler::start() {
   monitor.clear({0, 0, 0, 255});
   while (true) {
-    for (auto pairItr : gameObjects) {
-      auto roomName = pairItr.first;
-      if (roomName == this->currentRoom) {
-        auto &objects = pairItr.second;
-        for (auto &object : objects) {
-          this->render(object);
-        }
+    if (currentRoom != "") {
+      auto &objects = gameObjects.find(currentRoom)->second;
+      for (auto &object : objects) {
+        this->render(object);
       }
     }
     monitor.update();
