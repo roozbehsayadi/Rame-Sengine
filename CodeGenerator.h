@@ -28,7 +28,7 @@ private:
 
   void copyRequiredClasses() const;
 
-  void generateMainCode() const;
+  void generateMainCode(std::map<std::string, Room>) const;
   void generateMakefile() const;
 
   void generateBaseClass() const;

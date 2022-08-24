@@ -8,7 +8,7 @@ CodeGenerator &CodeGenerator::getInstance() {
 
 void CodeGenerator::generate(std::map<std::string, Room> rooms) const {
   this->copyRequiredClasses();
-  this->generateMainCode();
+  this->generateMainCode(rooms);
   this->generateClassForObjects(rooms);
   this->generateGameHandlerClass(rooms);
   this->generateBaseClass();
@@ -19,7 +19,7 @@ void CodeGenerator::generate(std::map<std::string, Room> rooms) const {
 
 void CodeGenerator::copyRequiredClasses() const { std::system("cp -r Sprite.* data_types/ generatedGame/"); }
 
-void CodeGenerator::generateMainCode() const {
+void CodeGenerator::generateMainCode(std::map<std::string, Room> rooms) const {
   std::ofstream fout;
 
   fout.open("generatedGame/main.cpp");
@@ -28,7 +28,11 @@ void CodeGenerator::generateMainCode() const {
     std::exit(1);
   }
 
-  fout << CodeGenerator::mainCode;
+  std::string mainTemp = CodeGenerator::mainCode;
+  auto initializationCommands = this->buildCreateObjectsSnippet(rooms);
+  CodeGenerator::replaceString(mainTemp, "${INCLUDE_ALL_OBJECTS}", generateGameHandlerIncludes(rooms));
+  CodeGenerator::replaceString(mainTemp, "${LOOP_AND_CREATE_ALL_OBJECT_INSTANCES}", initializationCommands);
+  fout << mainTemp;
   fout.close();
 }
 
@@ -117,11 +121,7 @@ void CodeGenerator::generateGameHandlerClass(std::map<std::string, Room> rooms) 
     std::exit(1);
   }
 
-  std::string dotCppTemp = CodeGenerator::gameHandlerDotCppCode;
-  auto initializationCommands = this->buildCreateObjectsSnippet(rooms);
-  CodeGenerator::replaceString(dotCppTemp, "${LOOP_AND_CREATE_ALL_OBJECT_INSTANCES}", initializationCommands);
-
-  fout << dotCppTemp;
+  fout << CodeGenerator::gameHandlerDotCppCode;
   fout.close();
 }
 
@@ -143,7 +143,7 @@ const std::string CodeGenerator::generateGameHandlerIncludes(std::map<std::strin
 const std::string CodeGenerator::buildCreateObjectsSnippet(std::map<std::string, Room> rooms) const {
   std::string oneIterationTemplate = R"(auto ${INSTANCE_NAME} = std::make_shared<${OBJECT_NAME}_ObjectClass>(
       "${OBJECT_NAME}", "${INSTANCE_NAME}", Sprite("${SPRITE_NAME}", ${SPRITE_FPS}, ${SPRITE_FRAMES}), ${OBJECT_X}, ${OBJECT_Y});
-  this->addObject("${ROOM_NAME}", ${INSTANCE_NAME});
+  gameHandler.addObject("${ROOM_NAME}", ${INSTANCE_NAME});
 )";
   std::string returnValue = "";
   for (auto [roomName, room] : rooms)
@@ -200,7 +200,7 @@ std::string CodeGenerator::vectorToString(std::vector<std::string> input) {
 std::string CodeGenerator::makefileCode =
     R"(.PHONY: all run clean
 
-all: build/main.o build/BaseObjectClass.o build/Sprite.o build/Image.o
+all: build/main.o build/BaseObjectClass.o build/GameHandler.o build/Sprite.o build/Image.o
 	g++ -Ibuild build/*.o -o build/Game.out -Wall -g -O2 -std=c++2a -lSDL2 -lSDL2_ttf -lSDL2_image
 
 run:
@@ -211,6 +211,9 @@ build/main.o: main.cpp
 
 build/BaseObjectClass.o: BaseObjectClass.h BaseObjectClass.cpp
 	g++ -std=c++2a -c -I. -o build/BaseObjectClass.o BaseObjectClass.cpp
+
+build/GameHandler.o: GameHandler.h GameHandler.cpp
+	g++ -std=c++2a -c -I. -o build/GameHandler.o GameHandler.cpp
 
 build/Sprite.o: Sprite.h Sprite.cpp
 	g++ -std=c++2a -c -I. -o build/Sprite.o Sprite.cpp
@@ -226,9 +229,21 @@ std::string CodeGenerator::mainCode =
     R"(
 #include <iostream>
 
+#include "GameHandler.h"
+
 #include "BaseObjectClass.h"
 
+${INCLUDE_ALL_OBJECTS}
+
 int main() {
+  GameHandler gameHandler;
+
+  // create object instances
+
+  ${LOOP_AND_CREATE_ALL_OBJECT_INSTANCES}
+
+  // end of creating object instances
+
   std::cout << "everything works!" << std::endl;
 
   return 0;
@@ -249,7 +264,7 @@ std::string CodeGenerator::baseClassDotHCode =
 class BaseObjectClass {
 public:
   // name of the object
-  BaseObjectClass(const std::string &, const std::string &, Sprite &, double, double);
+  BaseObjectClass(const std::string &, const std::string &, const Sprite &, double, double);
 
   const std::string &getObjectName() const { return this->objectName; }
   const std::string &getInstanceName() const { return this->instanceName; }
@@ -317,7 +332,7 @@ private:
 std::string CodeGenerator::baseClassDotCppCode = R"(
 #include "BaseObjectClass.h"
 
-BaseObjectClass::BaseObjectClass(const std::string &objectName, const std::string &instanceName, Sprite &sprite,
+BaseObjectClass::BaseObjectClass(const std::string &objectName, const std::string &instanceName, const Sprite &sprite,
                                  double x, double y) {
   this->objectName = objectName;
   this->instanceName = instanceName;
@@ -391,7 +406,6 @@ std::string CodeGenerator::gameHandlerDotHCode =
 #include <vector>
 
 #include "BaseObjectClass.h"
-${INCLUDE_ALL_OBJECTS}
 
 class GameHandler {
 public:
@@ -414,9 +428,7 @@ std::string CodeGenerator::gameHandlerDotCppCode =
     R"(
 #include "GameHandler.h"
 
-void GameHandler::start() {
-  ${LOOP_AND_CREATE_ALL_OBJECT_INSTANCES}
-}
+void GameHandler::start() {}
 
 void GameHandler::addObject(const std::string &roomName, std::shared_ptr<BaseObjectClass> object) {
   if (!gameObjects.contains(roomName))
