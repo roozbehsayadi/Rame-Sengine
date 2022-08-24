@@ -492,13 +492,15 @@ private:
   // arguments:
   // - isApplicable function
   // - function to be run if is applicable (one of the object's class members - checkout GameHandler::eventFunctions)
-  // - function to be run after the event function is run - default: nothing
-  void runFunctionWithAllObjects(
-      std::function<bool(std::shared_ptr<BaseObjectClass>)>, eventFunction,
-      std::function<void(std::shared_ptr<BaseObjectClass>)> = [](std::shared_ptr<BaseObjectClass>) {});
+  // - function to be run after the event function is run
+  // - function to be run after the event function is run
+  void runFunctionWithAllObjects(std::function<bool(std::shared_ptr<BaseObjectClass>)>, eventFunction,
+                                 std::function<void(std::shared_ptr<BaseObjectClass>)>,
+                                 std::function<void(std::shared_ptr<BaseObjectClass>)>);
 
   void handleMouseUpDownEvents(SDL_Event);
   void handleMouseMoveEvents(SDL_Event);
+  void handleKeyUpDownEvents(SDL_Event);
 
   // room name -> its objects
   allObjectsContainer gameObjects;
@@ -534,16 +536,24 @@ const std::map<std::string, GameHandler::eventFunction> GameHandler::eventFuncti
 };
 
 void GameHandler::start() {
-  monitor.clear({0, 0, 0, 255});
   SDL_Event event;
 
   while (true) {
-    if (SDL_PollEvent(&event))
+    if (SDL_PollEvent(&event)) {
       if (event.type == SDL_MOUSEBUTTONDOWN || event.type == SDL_MOUSEBUTTONUP)
         this->handleMouseUpDownEvents(event);
       else if (event.type == SDL_MOUSEMOTION)
         this->handleMouseMoveEvents(event);
+      else if (event.type == SDL_KEYDOWN || event.type == SDL_KEYUP)
+        this->handleKeyUpDownEvents(event);
+    }
+    auto trueFunction = [](std::shared_ptr<BaseObjectClass>) { return true; };
+    auto emptyFunction = [](std::shared_ptr<BaseObjectClass>) {};
+    this->runFunctionWithAllObjects(trueFunction, GameHandler::eventFunctions.at("stepEvent"), emptyFunction,
+                                    emptyFunction);
     // handler create and destroy later
+
+    monitor.clear({0, 0, 0, 255});
     if (currentRoom != "") {
       auto &objects = gameObjects.find(currentRoom)->second;
       for (auto &object : objects) {
@@ -572,11 +582,13 @@ void GameHandler::setCurrentRoom(const std::string &roomName) { this->currentRoo
 
 void GameHandler::runFunctionWithAllObjects(std::function<bool(std::shared_ptr<BaseObjectClass>)> isApplicable,
                                             eventFunction function,
+                                            std::function<void(std::shared_ptr<BaseObjectClass>)> beforeEvent,
                                             std::function<void(std::shared_ptr<BaseObjectClass>)> afterEvent) {
   for (auto itr = gameObjects.begin(); itr != gameObjects.end(); itr++) {
     auto objects = itr->second;
     for (auto object : objects) {
       if (isApplicable(object)) {
+        beforeEvent(object);
         function(object);
         afterEvent(object);
       }
@@ -593,27 +605,37 @@ void GameHandler::handleMouseUpDownEvents(SDL_Event event) {
         double(x), double(y),
         {object->getPosition().first, object->getPosition().second, double(size.x), double(size.y)});
   };
+
+  auto emptyFunction = [](std::shared_ptr<BaseObjectClass>) {};
   if (event.type == SDL_MOUSEBUTTONDOWN) {
     if (event.button.button == SDL_BUTTON_LEFT)
-      this->runFunctionWithAllObjects(isApplicable, GameHandler::eventFunctions.at("leftMouseDown"));
+      this->runFunctionWithAllObjects(isApplicable, GameHandler::eventFunctions.at("leftMouseDown"), emptyFunction,
+                                      emptyFunction);
     else if (event.button.button == SDL_BUTTON_MIDDLE)
-      this->runFunctionWithAllObjects(isApplicable, GameHandler::eventFunctions.at("middleMouseDown"));
+      this->runFunctionWithAllObjects(isApplicable, GameHandler::eventFunctions.at("middleMouseDown"), emptyFunction,
+                                      emptyFunction);
     else if (event.button.button == SDL_BUTTON_RIGHT)
-      this->runFunctionWithAllObjects(isApplicable, GameHandler::eventFunctions.at("rightMouseDown"));
+      this->runFunctionWithAllObjects(isApplicable, GameHandler::eventFunctions.at("rightMouseDown"), emptyFunction,
+                                      emptyFunction);
   } else if (event.type == SDL_MOUSEBUTTONUP) {
     if (event.button.button == SDL_BUTTON_LEFT)
-      this->runFunctionWithAllObjects(isApplicable, GameHandler::eventFunctions.at("leftMouseUp"));
+      this->runFunctionWithAllObjects(isApplicable, GameHandler::eventFunctions.at("leftMouseUp"), emptyFunction,
+                                      emptyFunction);
     else if (event.button.button == SDL_BUTTON_MIDDLE)
-      this->runFunctionWithAllObjects(isApplicable, GameHandler::eventFunctions.at("middleMouseUp"));
+      this->runFunctionWithAllObjects(isApplicable, GameHandler::eventFunctions.at("middleMouseUp"), emptyFunction,
+                                      emptyFunction);
     else if (event.button.button == SDL_BUTTON_RIGHT)
-      this->runFunctionWithAllObjects(isApplicable, GameHandler::eventFunctions.at("rightMouseUp"));
+      this->runFunctionWithAllObjects(isApplicable, GameHandler::eventFunctions.at("rightMouseUp"), emptyFunction,
+                                      emptyFunction);
   }
 }
 
 void GameHandler::handleMouseMoveEvents(SDL_Event event) {
+  auto emptyFunction = [](std::shared_ptr<BaseObjectClass>) {};
+
   auto x = event.motion.x, y = event.motion.y;
   this->runFunctionWithAllObjects([](std::shared_ptr<BaseObjectClass>) { return true; },
-                                  GameHandler::eventFunctions.at("mouseMove"));
+                                  GameHandler::eventFunctions.at("mouseMove"), emptyFunction, emptyFunction);
 
   auto revertIsMouseInside = [](std::shared_ptr<BaseObjectClass> object) {
     object->isMouseInside = !object->isMouseInside;
@@ -628,7 +650,7 @@ void GameHandler::handleMouseMoveEvents(SDL_Event event) {
                {object->getPosition().first, object->getPosition().second, double(size.x), double(size.y)});
   };
 
-  this->runFunctionWithAllObjects(mouseEnterIsApplicable, GameHandler::eventFunctions.at("mouseEnter"),
+  this->runFunctionWithAllObjects(mouseEnterIsApplicable, GameHandler::eventFunctions.at("mouseEnter"), emptyFunction,
                                   revertIsMouseInside);
 
   auto mouseLeaveIsApplicable = [x, y](std::shared_ptr<BaseObjectClass> object) {
@@ -640,7 +662,22 @@ void GameHandler::handleMouseMoveEvents(SDL_Event event) {
                {object->getPosition().first, object->getPosition().second, double(size.x), double(size.y)});
   };
 
-  this->runFunctionWithAllObjects(mouseLeaveIsApplicable, GameHandler::eventFunctions.at("mouseLeave"),
+  this->runFunctionWithAllObjects(mouseLeaveIsApplicable, GameHandler::eventFunctions.at("mouseLeave"), emptyFunction,
                                   revertIsMouseInside);
+}
+
+void GameHandler::handleKeyUpDownEvents(SDL_Event event) {
+  auto key = event.key.keysym.sym;
+  auto setKeyInObjectFunction = [key](std::shared_ptr<BaseObjectClass> object) { object->keyboardEventValue = key; };
+
+  auto emptyFunction = [](std::shared_ptr<BaseObjectClass>) {};
+  auto trueFunction = [](std::shared_ptr<BaseObjectClass>) { return true; };
+
+  if (event.type == SDL_KEYDOWN)
+    this->runFunctionWithAllObjects(trueFunction, GameHandler::eventFunctions.at("keyDown"), setKeyInObjectFunction,
+                                    emptyFunction);
+  else if (event.type == SDL_KEYUP)
+    this->runFunctionWithAllObjects(trueFunction, GameHandler::eventFunctions.at("keyUp"), setKeyInObjectFunction,
+                                    emptyFunction);
 }
 )";
