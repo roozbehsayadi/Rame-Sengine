@@ -544,14 +544,24 @@ void GameHandler::start() {
         this->handleMouseUpDownEvents(event);
       else if (event.type == SDL_MOUSEMOTION)
         this->handleMouseMoveEvents(event);
-      else if (event.type == SDL_KEYDOWN || event.type == SDL_KEYUP)
+      else if ((event.type == SDL_KEYDOWN && event.key.repeat == 0) || event.type == SDL_KEYUP)
         this->handleKeyUpDownEvents(event);
     }
+
     auto trueFunction = [](std::shared_ptr<BaseObjectClass>) { return true; };
     auto emptyFunction = [](std::shared_ptr<BaseObjectClass>) {};
     this->runFunctionWithAllObjects(trueFunction, GameHandler::eventFunctions.at("stepEvent"), emptyFunction,
                                     emptyFunction);
     // handler create and destroy later
+
+    // move the objects (if they have vx or vy)
+    this->runFunctionWithAllObjects(
+        trueFunction,
+        [](std::shared_ptr<BaseObjectClass> object) {
+          object->setPosition({object->getPosition().first + object->getVelocity().first,
+                               object->getPosition().second + object->getVelocity().second});
+        },
+        emptyFunction, emptyFunction);
 
     monitor.clear({0, 0, 0, 255});
     if (currentRoom != "") {
