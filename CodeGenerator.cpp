@@ -13,8 +13,6 @@ void CodeGenerator::generate(std::map<std::string, Room> rooms, const std::strin
   this->generateGameHandlerClass(rooms);
   this->generateBaseClass();
   this->generateMakefile(rooms);
-
-  // this->buildCreateObjectsSnippet(rooms);
 }
 
 void CodeGenerator::copyRequiredClasses() const {
@@ -460,6 +458,8 @@ std::string CodeGenerator::gameHandlerDotHCode =
 #include <string>
 #include <vector>
 
+#include "SDL2/SDL.h"
+
 #include "BaseObjectClass.h"
 #include "monitor/RuiMonitor.h"
 #include "utils/Rect.h"
@@ -467,7 +467,7 @@ std::string CodeGenerator::gameHandlerDotHCode =
 class GameHandler {
 public:
   GameHandler(RuiMonitor &monitor) : monitor(monitor) {}
-  
+
   void start();
 
   // Arguments:
@@ -480,13 +480,20 @@ public:
   void setCurrentRoom(const std::string &);
 
 private:
+  using allObjectsContainer = std::map<std::string, std::vector<std::shared_ptr<BaseObjectClass>>>;
+  using eventFunction = std::function<void(std::shared_ptr<BaseObjectClass> &)>;
+
+  void runFunctionWithAllObjects(std::function<bool(std::shared_ptr<BaseObjectClass>)>, eventFunction);
+
+  void handleMouseEvents(SDL_Event);
+
   // room name -> its objects
-  std::map<std::string, std::vector<std::shared_ptr<BaseObjectClass>>> gameObjects;
+  allObjectsContainer gameObjects;
 
   RuiMonitor monitor;
   std::string currentRoom = "";
 
-  static const std::map<std::string, std::function<void(std::shared_ptr<BaseObjectClass> &)>> eventFunctions;
+  static const std::map<std::string, eventFunction> eventFunctions;
 };
 
 #endif // __GAME_HANDLER_H
@@ -496,15 +503,15 @@ std::string CodeGenerator::gameHandlerDotCppCode =
     R"(
 #include "GameHandler.h"
 
-const std::map<std::string, std::function<void(std::shared_ptr<BaseObjectClass> &)>> GameHandler::eventFunctions = {
+const std::map<std::string, GameHandler::eventFunction> GameHandler::eventFunctions = {
     {"createEvent", &BaseObjectClass::createEvent},
     {"destroyEvent", &BaseObjectClass::destroyEvent},
     {"stepEvent", &BaseObjectClass::stepEvent},
     {"leftMouseDown", &BaseObjectClass::leftMouseDown},
-    {"righttMouseDown", &BaseObjectClass::rightMouseDown},
+    {"rightMouseDown", &BaseObjectClass::rightMouseDown},
     {"middleMouseDown", &BaseObjectClass::middleMouseDown},
     {"leftMouseUp", &BaseObjectClass::leftMouseUp},
-    {"righttMouseUp", &BaseObjectClass::rightMouseUp},
+    {"rightMouseUp", &BaseObjectClass::rightMouseUp},
     {"middleMouseUp", &BaseObjectClass::middleMouseUp},
     {"mouseEnter", &BaseObjectClass::mouseEnter},
     {"mouseLeave", &BaseObjectClass::mouseLeave},
@@ -514,7 +521,13 @@ const std::map<std::string, std::function<void(std::shared_ptr<BaseObjectClass> 
 
 void GameHandler::start() {
   monitor.clear({0, 0, 0, 255});
+  SDL_Event event;
+
   while (true) {
+    if (SDL_PollEvent(&event))
+      if (event.type == SDL_MOUSEBUTTONDOWN || event.type == SDL_MOUSEBUTTONUP)
+        this->handleMouseEvents(event);
+    // handler create and destroy later
     if (currentRoom != "") {
       auto &objects = gameObjects.find(currentRoom)->second;
       for (auto &object : objects) {
@@ -540,4 +553,41 @@ void GameHandler::render(std::shared_ptr<BaseObjectClass> object) {
 }
 
 void GameHandler::setCurrentRoom(const std::string &roomName) { this->currentRoom = roomName; }
+
+void GameHandler::runFunctionWithAllObjects(std::function<bool(std::shared_ptr<BaseObjectClass>)> isApplicable,
+                                            eventFunction function) {
+  for (auto itr = gameObjects.begin(); itr != gameObjects.end(); itr++) {
+    auto objects = itr->second;
+    for (auto object : objects) {
+      if (isApplicable(object))
+        function(object);
+    }
+  }
+}
+
+void GameHandler::handleMouseEvents(SDL_Event event) {
+  auto x = event.button.x, y = event.button.y;
+  auto isApplicable = [x, y](std::shared_ptr<BaseObjectClass> object) {
+    SDL_Point size;
+    SDL_QueryTexture(object->sprite.getCurrentFrame()->getTexture(), nullptr, nullptr, &size.x, &size.y);
+    return Geometry::isPointInsideRect(
+        double(x), double(y),
+        {object->getPosition().first, object->getPosition().second, double(size.x), double(size.y)});
+  };
+  if (event.type == SDL_MOUSEBUTTONDOWN) {
+    if (event.button.button == SDL_BUTTON_LEFT)
+      this->runFunctionWithAllObjects(isApplicable, GameHandler::eventFunctions.at("leftMouseDown"));
+    else if (event.button.button == SDL_BUTTON_MIDDLE)
+      this->runFunctionWithAllObjects(isApplicable, GameHandler::eventFunctions.at("middleMouseDown"));
+    else if (event.button.button == SDL_BUTTON_RIGHT)
+      this->runFunctionWithAllObjects(isApplicable, GameHandler::eventFunctions.at("rightMouseDown"));
+  } else if (event.type == SDL_MOUSEBUTTONUP) {
+    if (event.button.button == SDL_BUTTON_LEFT)
+      this->runFunctionWithAllObjects(isApplicable, GameHandler::eventFunctions.at("leftMouseUp"));
+    else if (event.button.button == SDL_BUTTON_MIDDLE)
+      this->runFunctionWithAllObjects(isApplicable, GameHandler::eventFunctions.at("middleMouseUp"));
+    else if (event.button.button == SDL_BUTTON_RIGHT)
+      this->runFunctionWithAllObjects(isApplicable, GameHandler::eventFunctions.at("rightMouseUp"));
+  }
+}
 )";
