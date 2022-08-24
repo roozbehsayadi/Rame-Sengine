@@ -263,7 +263,7 @@ int main() {
     }
 
     if (generateCodebutton->isClicked()) {
-      CodeGenerator::getInstance().generate(rooms);
+      CodeGenerator::getInstance().generate(rooms, selectedRoomName);
     }
 
     RUI::getInstance().render();

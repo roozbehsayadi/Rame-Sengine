@@ -18,7 +18,8 @@ public:
   // TODO add copy constructor (bevause of texture)
 
   const std::string &getImagePath() const { return this->imagePath; }
-  SDL_Texture *getTexture(SDL_Renderer *);
+  SDL_Texture *renderAndGetTexture(SDL_Renderer *);
+  SDL_Texture *&getTexture() { return this->texture; }
 
 private:
   std::string imagePath;

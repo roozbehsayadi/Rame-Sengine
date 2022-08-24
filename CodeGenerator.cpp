@@ -6,9 +6,9 @@ CodeGenerator &CodeGenerator::getInstance() {
   return instance;
 }
 
-void CodeGenerator::generate(std::map<std::string, Room> rooms) const {
+void CodeGenerator::generate(std::map<std::string, Room> rooms, const std::string &firstRoom) const {
   this->copyRequiredClasses();
-  this->generateMainCode(rooms);
+  this->generateMainCode(rooms, firstRoom);
   this->generateClassForObjects(rooms);
   this->generateGameHandlerClass(rooms);
   this->generateBaseClass();
@@ -17,9 +17,11 @@ void CodeGenerator::generate(std::map<std::string, Room> rooms) const {
   // this->buildCreateObjectsSnippet(rooms);
 }
 
-void CodeGenerator::copyRequiredClasses() const { std::system("cp -r Sprite.* data_types/ generatedGame/"); }
+void CodeGenerator::copyRequiredClasses() const {
+  std::system("cp -r Sprite.* data_types/ RUI/monitor/ RUI/utils/ assets/ generatedGame/");
+}
 
-void CodeGenerator::generateMainCode(std::map<std::string, Room> rooms) const {
+void CodeGenerator::generateMainCode(std::map<std::string, Room> rooms, const std::string &firstRoom) const {
   std::ofstream fout;
 
   fout.open("generatedGame/main.cpp");
@@ -32,6 +34,7 @@ void CodeGenerator::generateMainCode(std::map<std::string, Room> rooms) const {
   auto initializationCommands = this->buildCreateObjectsSnippet(rooms);
   CodeGenerator::replaceString(mainTemp, "${INCLUDE_ALL_OBJECTS}", generateGameHandlerIncludes(rooms));
   CodeGenerator::replaceString(mainTemp, "${LOOP_AND_CREATE_ALL_OBJECT_INSTANCES}", initializationCommands);
+  CodeGenerator::replaceString(mainTemp, "${FIRST_ROOM_NAME}", firstRoom);
   fout << mainTemp;
   fout.close();
 }
@@ -200,11 +203,11 @@ std::string CodeGenerator::vectorToString(std::vector<std::string> input) {
 std::string CodeGenerator::makefileCode =
     R"(.PHONY: all run clean
 
-all: build/main.o build/BaseObjectClass.o build/GameHandler.o build/Sprite.o build/Image.o
+all: build/main.o build/BaseObjectClass.o build/GameHandler.o build/Sprite.o build/Image.o build/RuiMonitor.o build/Color.o build/Rect.o build/Geometry.o
 	g++ -Ibuild build/*.o -o build/Game.out -Wall -g -O2 -std=c++2a -lSDL2 -lSDL2_ttf -lSDL2_image
 
 run:
-	./build/Game.out
+	gdb -q build/Game.out
 
 build/main.o: main.cpp
 	g++ -std=c++2a -c -I. -o build/main.o main.cpp
@@ -221,6 +224,18 @@ build/Sprite.o: Sprite.h Sprite.cpp
 build/Image.o: data_types/Image.h data_types/Image.cpp
 	g++ -std=c++2a -c -I. -o build/Image.o data_types/Image.cpp
 
+build/RuiMonitor.o: monitor/RuiMonitor.h monitor/RuiMonitor.cpp
+	g++ -std=c++2a -c -I. -o build/RuiMonitor.o monitor/RuiMonitor.cpp
+
+build/Color.o: utils/Color.h utils/Color.cpp
+	g++ -std=c++2a -c -I. -o build/Color.o utils/Color.cpp
+
+build/Rect.o: utils/Rect.h utils/Rect.cpp
+	g++ -std=c++2a -c -I. -o build/Rect.o utils/Rect.cpp
+
+build/Geometry.o: utils/Geometry.h utils/Geometry.cpp
+	g++ -std=c++2a -c -I. -o build/Geometry.o utils/Geometry.cpp
+
 clean:
 	rm -rf build/*.o build/*.gch build/*.out
 )";
@@ -230,18 +245,22 @@ std::string CodeGenerator::mainCode =
 #include <iostream>
 
 #include "GameHandler.h"
+#include "monitor/RuiMonitor.h"
 
 #include "BaseObjectClass.h"
 ${INCLUDE_ALL_OBJECTS}
 
 int main() {
-  GameHandler gameHandler;
+  RuiMonitor monitor("Game");
+  GameHandler gameHandler(monitor);
 
   // create object instances
   std::cerr << "creating object instances\n";
   ${LOOP_AND_CREATE_ALL_OBJECT_INSTANCES}
   std::cerr << "object instances created\n";
   // end of creating object instances
+
+  gameHandler.setCurrentRoom("${FIRST_ROOM_NAME}");
 
   std::cerr << "starting the game\n";
   gameHandler.start();
@@ -261,7 +280,11 @@ std::string CodeGenerator::baseClassDotHCode =
 
 #include "Sprite.h"
 
+class GameHandler;
+
 class BaseObjectClass {
+  friend class GameHandler;
+
 public:
   // name of the object
   BaseObjectClass(const std::string &, const std::string &, const Sprite &, double, double);
@@ -406,9 +429,13 @@ std::string CodeGenerator::gameHandlerDotHCode =
 #include <vector>
 
 #include "BaseObjectClass.h"
+#include "monitor/RuiMonitor.h"
+#include "utils/Rect.h"
 
 class GameHandler {
 public:
+  GameHandler(RuiMonitor &monitor) : monitor(monitor) {}
+  
   void start();
 
   // Arguments:
@@ -416,9 +443,16 @@ public:
   // - the object itself
   void addObject(const std::string &, std::shared_ptr<BaseObjectClass>);
 
+  void render(std::shared_ptr<BaseObjectClass>);
+
+  void setCurrentRoom(const std::string &);
+
 private:
   // room name -> its objects
   std::map<std::string, std::vector<std::shared_ptr<BaseObjectClass>>> gameObjects;
+
+  RuiMonitor monitor;
+  std::string currentRoom = "";
 };
 
 #endif // __GAME_HANDLER_H
@@ -428,12 +462,35 @@ std::string CodeGenerator::gameHandlerDotCppCode =
     R"(
 #include "GameHandler.h"
 
-void GameHandler::start() {}
+void GameHandler::start() {
+  monitor.clear({0, 0, 0, 255});
+  while (true) {
+    for (auto pairItr : gameObjects) {
+      auto roomName = pairItr.first;
+      if (roomName == this->currentRoom) {
+        auto &objects = pairItr.second;
+        for (auto &object : objects) {
+          this->render(object);
+        }
+      }
+    }
+    monitor.update();
+  }
+}
 
 void GameHandler::addObject(const std::string &roomName, std::shared_ptr<BaseObjectClass> object) {
   if (!gameObjects.contains(roomName))
     gameObjects.insert({roomName, {}});
-  else
-    gameObjects.at(roomName).push_back(object);
+  gameObjects.find(roomName)->second.push_back(object);
 }
+
+void GameHandler::render(std::shared_ptr<BaseObjectClass> object) {
+  auto currentFrame = object->sprite.getCurrentFrameAndProceed();
+  auto windowSize = monitor.getMonitorSize();
+  monitor.drawImage({object->getPosition().first, object->getPosition().second, -1, -1},
+                    {0, 0, double(windowSize.first), double(windowSize.second)}, currentFrame->getTexture(),
+                    currentFrame->getImagePath());
+}
+
+void GameHandler::setCurrentRoom(const std::string &roomName) { this->currentRoom = roomName; }
 )";

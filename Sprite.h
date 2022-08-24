@@ -47,7 +47,7 @@ private:
   // TODO get rid of these pointless pointers
   std::vector<std::shared_ptr<Image>> frames;
 
-  int currentFrame;
+  int currentFrame = 0;
 
   double FPS;
   std::string name;

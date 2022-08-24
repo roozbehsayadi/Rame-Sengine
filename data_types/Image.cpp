@@ -8,7 +8,7 @@ const Image &Image::operator=(const Image &other) {
   return *this;
 }
 
-SDL_Texture *Image::getTexture(SDL_Renderer *renderer) {
+SDL_Texture *Image::renderAndGetTexture(SDL_Renderer *renderer) {
   if (texture == nullptr) {
     texture = IMG_LoadTexture(renderer, imagePath.c_str());
     if (!texture) {

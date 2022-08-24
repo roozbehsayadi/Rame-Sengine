@@ -21,14 +21,14 @@ public:
   void operator=(CodeGenerator const &) = delete;
 
   // TDOO add list of rooms as input of this function
-  void generate(std::map<std::string, Room>) const;
+  void generate(std::map<std::string, Room>, const std::string &) const;
 
 private:
   CodeGenerator() {}
 
   void copyRequiredClasses() const;
 
-  void generateMainCode(std::map<std::string, Room>) const;
+  void generateMainCode(std::map<std::string, Room>, const std::string &) const;
   void generateMakefile() const;
 
   void generateBaseClass() const;
