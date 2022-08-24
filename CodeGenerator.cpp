@@ -12,7 +12,7 @@ void CodeGenerator::generate(std::map<std::string, Room> rooms, const std::strin
   this->generateClassForObjects(rooms);
   this->generateGameHandlerClass(rooms);
   this->generateBaseClass();
-  this->generateMakefile();
+  this->generateMakefile(rooms);
 
   // this->buildCreateObjectsSnippet(rooms);
 }
@@ -39,7 +39,7 @@ void CodeGenerator::generateMainCode(std::map<std::string, Room> rooms, const st
   fout.close();
 }
 
-void CodeGenerator::generateMakefile() const {
+void CodeGenerator::generateMakefile(std::map<std::string, Room> rooms) const {
   std::ofstream fout;
 
   fout.open("generatedGame/Makefile");
@@ -200,10 +200,34 @@ std::string CodeGenerator::vectorToString(std::vector<std::string> input) {
   return returnValue;
 }
 
+std::string CodeGenerator::buildMakefileTargetsForObjects(std::set<std::string> classes) {
+  std::string returnValue = "";
+  for (auto className : classes)
+    returnValue += "build/" + className + "_ObjectClass.o ";
+
+  return returnValue;
+}
+
+std::string CodeGenerator::buildMakefileBuildCommandsForObjects(std::set<std::string> classes) {
+  std::string returnValue = "";
+  std::string singleTarget =
+      R"(build/${FILE_NAME}.o: ${FILE_NAME}.h ${FILE_NAME}.cpp
+	g++ -std=c++2a -c -I. -o build/${FILE_NAME}.o ${FILE_NAME}.cpp
+)";
+  for (auto className : classes) {
+    std::string temp = singleTarget;
+    std::string fileName = className + "_ObjectClass";
+    CodeGenerator::replaceString(temp, "${FILE_NAME}", fileName);
+    returnValue += temp;
+  }
+
+  return returnValue;
+}
+
 std::string CodeGenerator::makefileCode =
     R"(.PHONY: all run clean
 
-all: build/main.o build/BaseObjectClass.o build/GameHandler.o build/Sprite.o build/Image.o build/RuiMonitor.o build/Color.o build/Rect.o build/Geometry.o
+all: build/main.o build/BaseObjectClass.o build/GameHandler.o build/Sprite.o build/Image.o build/RuiMonitor.o build/Color.o build/Rect.o build/Geometry.o ${OBJECTS_OBJECT_FILES}
 	g++ -Ibuild build/*.o -o build/Game.out -Wall -g -O2 -std=c++2a -lSDL2 -lSDL2_ttf -lSDL2_image
 
 run:
@@ -236,6 +260,7 @@ build/Rect.o: utils/Rect.h utils/Rect.cpp
 build/Geometry.o: utils/Geometry.h utils/Geometry.cpp
 	g++ -std=c++2a -c -I. -o build/Geometry.o utils/Geometry.cpp
 
+${BUILD_OBJECTS_OBJECT_FILES}
 clean:
 	rm -rf build/*.o build/*.gch build/*.out
 )";

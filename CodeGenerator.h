@@ -29,7 +29,8 @@ private:
   void copyRequiredClasses() const;
 
   void generateMainCode(std::map<std::string, Room>, const std::string &) const;
-  void generateMakefile() const;
+
+  void generateMakefile(std::map<std::string, Room>) const;
 
   void generateBaseClass() const;
   void generateClassForObjects(std::map<std::string, Room>) const;
@@ -43,6 +44,8 @@ private:
   static std::set<std::string> extractObjectNamesFromRooms(std::map<std::string, Room>);
   static void replaceString(std::string &, const std::string &, const std::string &);
   static std::string vectorToString(std::vector<std::string>);
+  static std::string buildMakefileTargetsForObjects(std::set<std::string>);
+  static std::string buildMakefileBuildCommandsForObjects(std::set<std::string>);
 
   std::string folderName;
 
