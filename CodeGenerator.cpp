@@ -366,8 +366,9 @@ public:
 
   virtual void collidedWith(std::shared_ptr<BaseObjectClass>);
 
-  virtual void keyDownEvent(SDL_Keycode);
-  virtual void keyUpEvent();
+protected:
+  // only use it in keyboard event functions
+  SDL_Keycode keyboardEventValue = SDLK_UNKNOWN;
 
 private:
   // TODO maybe change objectName to an enum
@@ -417,9 +418,6 @@ void BaseObjectClass::keyDown() {}
 void BaseObjectClass::keyUp() {}
 
 void BaseObjectClass::collidedWith(std::shared_ptr<BaseObjectClass>) {}
-
-void BaseObjectClass::keyDownEvent(SDL_Keycode) {}
-void BaseObjectClass::keyUpEvent() {}
 )";
 
 std::string CodeGenerator::objectClassDotHCode =
@@ -456,6 +454,7 @@ std::string CodeGenerator::gameHandlerDotHCode =
     R"(#ifndef __GAME_HANDLER_H
 #define __GAME_HANDLER_H
 
+#include <functional>
 #include <map>
 #include <memory>
 #include <string>
@@ -486,6 +485,8 @@ private:
 
   RuiMonitor monitor;
   std::string currentRoom = "";
+
+  static const std::map<std::string, std::function<void(std::shared_ptr<BaseObjectClass> &)>> eventFunctions;
 };
 
 #endif // __GAME_HANDLER_H
@@ -494,6 +495,22 @@ private:
 std::string CodeGenerator::gameHandlerDotCppCode =
     R"(
 #include "GameHandler.h"
+
+const std::map<std::string, std::function<void(std::shared_ptr<BaseObjectClass> &)>> GameHandler::eventFunctions = {
+    {"createEvent", &BaseObjectClass::createEvent},
+    {"destroyEvent", &BaseObjectClass::destroyEvent},
+    {"stepEvent", &BaseObjectClass::stepEvent},
+    {"leftMouseDown", &BaseObjectClass::leftMouseDown},
+    {"righttMouseDown", &BaseObjectClass::rightMouseDown},
+    {"middleMouseDown", &BaseObjectClass::middleMouseDown},
+    {"leftMouseUp", &BaseObjectClass::leftMouseUp},
+    {"righttMouseUp", &BaseObjectClass::rightMouseUp},
+    {"middleMouseUp", &BaseObjectClass::middleMouseUp},
+    {"mouseEnter", &BaseObjectClass::mouseEnter},
+    {"mouseLeave", &BaseObjectClass::mouseLeave},
+    {"keyDown", &BaseObjectClass::keyDown},
+    {"keyUp", &BaseObjectClass::keyUp},
+};
 
 void GameHandler::start() {
   monitor.clear({0, 0, 0, 255});
