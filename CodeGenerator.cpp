@@ -232,19 +232,19 @@ std::string CodeGenerator::mainCode =
 #include "GameHandler.h"
 
 #include "BaseObjectClass.h"
-
 ${INCLUDE_ALL_OBJECTS}
 
 int main() {
   GameHandler gameHandler;
 
   // create object instances
-
+  std::cerr << "creating object instances\n";
   ${LOOP_AND_CREATE_ALL_OBJECT_INSTANCES}
-
+  std::cerr << "object instances created\n";
   // end of creating object instances
 
-  std::cout << "everything works!" << std::endl;
+  std::cerr << "starting the game\n";
+  gameHandler.start();
 
   return 0;
 }
