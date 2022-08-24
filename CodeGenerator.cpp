@@ -540,7 +540,9 @@ void GameHandler::start() {
 
   while (true) {
     if (SDL_PollEvent(&event)) {
-      if (event.type == SDL_MOUSEBUTTONDOWN || event.type == SDL_MOUSEBUTTONUP)
+      if (event.type == SDL_QUIT)
+        exit(0); // TODO maybe do something fancier?
+      else if (event.type == SDL_MOUSEBUTTONDOWN || event.type == SDL_MOUSEBUTTONUP)
         this->handleMouseUpDownEvents(event);
       else if (event.type == SDL_MOUSEMOTION)
         this->handleMouseMoveEvents(event);
