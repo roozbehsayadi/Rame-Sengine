@@ -11,7 +11,7 @@ void CodeGenerator::generate(std::map<std::string, Room> rooms, const std::strin
   this->generateMainCode(rooms, firstRoom);
   this->generateClassForObjects(rooms);
   this->generateGameHandlerClass(rooms);
-  this->generateBaseClass();
+  this->generateBaseClass(rooms);
   this->generateMakefile(rooms);
   this->generateGlobalVariablesClass(rooms);
 }
@@ -59,7 +59,7 @@ void CodeGenerator::generateMakefile(std::map<std::string, Room> rooms) const {
   fout.close();
 }
 
-void CodeGenerator::generateBaseClass() const {
+void CodeGenerator::generateBaseClass(std::map<std::string, Room> rooms) const {
   std::ofstream fout;
 
   fout.open("generatedGame/BaseObjectClass.h");
@@ -68,7 +68,12 @@ void CodeGenerator::generateBaseClass() const {
     std::exit(1);
   }
 
-  fout << CodeGenerator::baseClassDotHCode;
+  std::string temp = CodeGenerator::baseClassDotHCode;
+  CodeGenerator::replaceString(temp, "${OBJECTS_CLASSES}",
+                               buildAllObjectsForwardDeclarations(this->extractObjectNamesFromRooms(rooms)));
+  CodeGenerator::replaceString(temp, "${FRIEND_OBJECT_CLASSES}",
+                               buildAllObjectsAsFriends(this->extractObjectNamesFromRooms(rooms)));
+  fout << temp;
   fout.close();
 
   fout.open("generatedGame/BaseObjectClass.cpp");
@@ -343,6 +348,34 @@ std::string CodeGenerator::buildMakefileBuildCommandsForObjects(std::set<std::st
   return returnValue;
 }
 
+const std::string CodeGenerator::buildAllObjectsForwardDeclarations(std::set<std::string> objectNames) const {
+  std::string returnValue = "";
+  std::string classTemplate =
+      R"(class ${CLASS_NAME};
+)";
+  for (auto objectName : objectNames) {
+    std::string temp = classTemplate;
+    CodeGenerator::replaceString(temp, "${CLASS_NAME}", objectName);
+    returnValue += temp;
+  }
+
+  return returnValue;
+}
+
+const std::string CodeGenerator::buildAllObjectsAsFriends(std::set<std::string> objectNames) const {
+  std::string returnValue = "";
+  std::string classTemplate =
+      R"(friend class ${CLASS_NAME};
+)";
+  for (auto objectName : objectNames) {
+    std::string temp = classTemplate;
+    CodeGenerator::replaceString(temp, "${CLASS_NAME}", objectName);
+    returnValue += temp;
+  }
+
+  return returnValue;
+}
+
 std::string CodeGenerator::makefileCode =
     R"(.PHONY: all run clean
 
@@ -430,9 +463,11 @@ std::string CodeGenerator::baseClassDotHCode =
 #include "Sprite.h"
 
 class GameHandler;
+${OBJECTS_CLASSES}
 
 class BaseObjectClass {
   friend class GameHandler;
+  ${FRIEND_OBJECT_CLASSES}
 
 public:
   // name of the object
@@ -599,6 +634,7 @@ std::string CodeGenerator::gameHandlerDotHCode =
     R"(#ifndef __GAME_HANDLER_H
 #define __GAME_HANDLER_H
 
+#include <algorithm>
 #include <functional>
 #include <map>
 #include <memory>
@@ -624,8 +660,28 @@ public:
   // - the object itself
   void addObject(const std::string &, std::shared_ptr<BaseObjectClass>);
 
+  // Arguments:
+  // - name of the room to check in
+  // - an object instance
+  // - list of object names
+  // - new position of the instance
+  // Return value:
+  // - the collided object is any collisions happens, otherwise nullptr
+  std::shared_ptr<BaseObjectClass> isCollide(const std::string &, const BaseObjectClass &,
+                                             const std::vector<std::string> &, std::pair<double, double>);
+
+  // Arguments:
+  // - name of the room to check in
+  // - an object instance
+  // - another object instance
+  // - new position for the first object instance
+  // Return value:
+  // - whether they'll collide or not
+  bool isCollide(const std::string &, const BaseObjectClass &, const BaseObjectClass &, std::pair<double, double>);
+
 ${CREATE_FUNCTIONS_FOR_ALL_OBJECTS}
 
+  const std::string &getCurrentRoom() const { return this->currentRoom; }
   void setCurrentRoom(const std::string &);
 
 private:
@@ -773,6 +829,37 @@ void GameHandler::render(std::shared_ptr<BaseObjectClass> object) {
   monitor.drawImage({object->getPosition().first, object->getPosition().second, -1, -1},
                     {0, 0, double(windowSize.first), double(windowSize.second)}, currentFrame->getTexture(),
                     currentFrame->getImagePath());
+}
+
+std::shared_ptr<BaseObjectClass> GameHandler::isCollide(const std::string &roomName, const BaseObjectClass &object,
+                                                        const std::vector<std::string> &objectNames,
+                                                        std::pair<double, double> newPosition) {
+  for (auto itr : this->gameObjects)
+    if (itr.first == roomName)
+      for (auto &otherObject : itr.second)
+        if (std::find(objectNames.begin(), objectNames.end(), otherObject->getObjectName()) != objectNames.end())
+          if (this->isCollide(roomName, object, *otherObject, newPosition))
+            return otherObject;
+  return nullptr;
+}
+
+bool GameHandler::isCollide(const std::string &roomName, const BaseObjectClass &object,
+                            const BaseObjectClass &otherObject, std::pair<double, double> newPosition) {
+  Rect objectRect = {
+      newPosition.first,
+      newPosition.second,
+      double(object.sprite.getCurrentFrame()->getSize().first),
+      double(object.sprite.getCurrentFrame()->getSize().second),
+  };
+
+  Rect otherObjectRect = {
+      otherObject.getPosition().first,
+      otherObject.getPosition().second,
+      double(otherObject.sprite.getCurrentFrame()->getSize().first),
+      double(otherObject.sprite.getCurrentFrame()->getSize().second),
+  };
+
+  return Geometry::trimRect(objectRect, otherObjectRect).second;
 }
 
 ${CREATE_OBJECT_FUNCTIONS_IMPLEMENTATIONS}

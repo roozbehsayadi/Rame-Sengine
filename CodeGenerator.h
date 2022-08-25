@@ -32,7 +32,7 @@ private:
 
   void generateMakefile(std::map<std::string, Room>) const;
 
-  void generateBaseClass() const;
+  void generateBaseClass(std::map<std::string, Room>) const;
   void generateClassForObjects(std::map<std::string, Room>) const;
 
   void generateGlobalVariablesClass(std::map<std::string, Room>) const;
@@ -47,6 +47,9 @@ private:
   const std::string buildSpriteStaticVariableInitializations(std::map<std::string, Room>) const;
 
   const std::string buildCreateObjectsSnippet(std::map<std::string, Room>) const;
+
+  const std::string buildAllObjectsForwardDeclarations(std::set<std::string>) const;
+  const std::string buildAllObjectsAsFriends(std::set<std::string>) const;
 
   // some utils
   static std::set<std::string> extractObjectNamesFromRooms(std::map<std::string, Room>);
