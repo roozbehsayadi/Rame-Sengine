@@ -241,7 +241,6 @@ int main() {
 
         std::string objectInstaceName = selectedObjectName + "_" + objectIdTemp;
 
-        std::cout << selectedObjectName << " " << objectInstaceName << std::endl;
         ObjectInstace objectInstace(selectedObjectName, objectInstaceName,
                                     objects.find(selectedObjectName)->second.getSprite(), screenObject);
         rooms.find(selectedRoomName)->second.insertObject(std::make_shared<ObjectInstace>(objectInstace));
