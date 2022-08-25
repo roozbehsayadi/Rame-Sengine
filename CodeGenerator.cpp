@@ -14,6 +14,7 @@ void CodeGenerator::generate(std::map<std::string, Room> rooms, const std::strin
   this->generateBaseClass(rooms);
   this->generateMakefile(rooms);
   this->generateGlobalVariablesClass(rooms);
+  this->generateCameraClass();
 }
 
 void CodeGenerator::copyRequiredClasses() const {
@@ -35,6 +36,28 @@ void CodeGenerator::generateMainCode(std::map<std::string, Room> rooms, const st
   CodeGenerator::replaceString(mainTemp, "${LOOP_AND_CREATE_ALL_OBJECT_INSTANCES}", initializationCommands);
   CodeGenerator::replaceString(mainTemp, "${FIRST_ROOM_NAME}", firstRoom);
   fout << mainTemp;
+  fout.close();
+}
+
+void CodeGenerator::generateCameraClass() const {
+  std::ofstream fout;
+
+  fout.open("generatedGame/Camera.h");
+  if (!fout) {
+    std::cerr << "could not open file generatedGame/Camera.h\n";
+    std::exit(1);
+  }
+
+  fout << CodeGenerator::cameraDotHCode;
+  fout.close();
+
+  fout.open("generatedGame/Camera.cpp");
+  if (!fout) {
+    std::cerr << "could not open file generatedGame/Camera.cpp\n";
+    std::exit(1);
+  }
+
+  fout << CodeGenerator::cameraDotCppCode;
   fout.close();
 }
 
@@ -379,7 +402,7 @@ const std::string CodeGenerator::buildAllObjectsAsFriends(std::set<std::string> 
 std::string CodeGenerator::makefileCode =
     R"(.PHONY: all run clean
 
-all: build/main.o build/BaseObjectClass.o build/GameHandler.o build/Sprite.o build/Image.o build/RuiMonitor.o build/Color.o build/Rect.o build/Geometry.o build/GlobalVariables.o ${OBJECTS_OBJECT_FILES}
+all: build/main.o build/BaseObjectClass.o build/GameHandler.o build/Sprite.o build/Image.o build/RuiMonitor.o build/Color.o build/Rect.o build/Geometry.o build/GlobalVariables.o build/Camera.o ${OBJECTS_OBJECT_FILES}
 	g++ -Ibuild build/*.o -o build/Game.out -Wall -g -O2 -std=c++2a -lSDL2 -lSDL2_ttf -lSDL2_image
 
 run:
@@ -414,6 +437,9 @@ build/Geometry.o: utils/Geometry.h utils/Geometry.cpp
 
 build/GlobalVariables.o: GlobalVariables.h GlobalVariables.cpp
 	g++ -std=c++2a -c -I. -o build/GlobalVariables.o GlobalVariables.cpp
+
+build/Camera.o: Camera.h Camera.cpp
+	g++ -std=c++2a -c -I. -o build/Camera.o Camera.cpp
 
 ${BUILD_OBJECTS_OBJECT_FILES}
 clean:
@@ -646,6 +672,7 @@ std::string CodeGenerator::gameHandlerDotHCode =
 #include "BaseObjectClass.h"
 #include "monitor/RuiMonitor.h"
 #include "utils/Rect.h"
+#include "Camera.h"
 
 ${INCLUDE_ALL_OBJECTS}
 
@@ -829,7 +856,7 @@ void GameHandler::addObject(const std::string &roomName, std::shared_ptr<BaseObj
 void GameHandler::render(std::shared_ptr<BaseObjectClass> object) {
   auto currentFrame = object->sprite.getCurrentFrameAndProceed();
   auto windowSize = monitor.getMonitorSize();
-  monitor.drawImage({object->getPosition().first, object->getPosition().second, -1, -1},
+  monitor.drawImage({object->getPosition().first - Camera::x, object->getPosition().second - Camera::y, -1, -1},
                     {0, 0, double(windowSize.first), double(windowSize.second)}, currentFrame->getTexture(),
                     currentFrame->getImagePath());
 }
@@ -966,4 +993,24 @@ void GameHandler::handleKeyUpDownEvents(SDL_Event event) {
     this->runFunctionWithAllObjects(trueFunction, GameHandler::eventFunctions.at("keyUp"), setKeyInObjectFunction,
                                     emptyFunction);
 }
+)";
+
+std::string CodeGenerator::cameraDotHCode =
+    R"(#ifndef __CAMERA_H
+#define __CAMERA_H
+
+class Camera {
+public:
+  // top left
+  static double x, y;
+};
+
+#endif // __CAMERA_H
+)";
+
+std::string CodeGenerator::cameraDotCppCode = R"(
+#include "Camera.h"
+
+double Camera::x = 0;
+double Camera::y = 0;
 )";

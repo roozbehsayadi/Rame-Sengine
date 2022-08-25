@@ -30,6 +30,8 @@ private:
 
   void generateMainCode(std::map<std::string, Room>, const std::string &) const;
 
+  void generateCameraClass() const;
+
   void generateMakefile(std::map<std::string, Room>) const;
 
   void generateBaseClass(std::map<std::string, Room>) const;
@@ -75,6 +77,9 @@ private:
 
   static std::string gameHandlerDotHCode;
   static std::string gameHandlerDotCppCode;
+
+  static std::string cameraDotHCode;
+  static std::string cameraDotCppCode;
 };
 
 #endif // __CODE_GENERATOR_H
