@@ -1,6 +1,7 @@
 #ifndef __SPRITE_H
 #define __SPRITE_H
 
+#include <chrono>
 #include <memory>
 #include <vector>
 
@@ -55,6 +56,8 @@ private:
 
   double FPS;
   std::string name;
+
+  std::chrono::time_point<std::chrono::system_clock> lastUpdateTime = std::chrono::system_clock::now();
 };
 
 #endif
