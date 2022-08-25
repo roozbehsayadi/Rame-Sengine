@@ -367,12 +367,6 @@ public:
   virtual void collidedWith(std::shared_ptr<BaseObjectClass>);
 
 protected:
-  // only use it in keyboard event functions
-  SDL_Keycode keyboardEventValue = SDLK_UNKNOWN;
-
-  bool isMouseInside = false;
-
-private:
   // TODO maybe change objectName to an enum
   std::string objectName;
   std::string instanceName;
@@ -383,6 +377,10 @@ private:
   double vx, vy;
 
   bool toBeDestroyed = false;
+  // only use it in keyboard event functions
+  SDL_Keycode keyboardEventValue = SDLK_UNKNOWN;
+
+  bool isMouseInside = false;
 };
 
 #endif // __BASE_OBJECT_CLASS_H
@@ -564,6 +562,20 @@ void GameHandler::start() {
                                object->getPosition().second + object->getVelocity().second});
         },
         emptyFunction, emptyFunction);
+
+    // handle collisions
+
+    // check object deletes
+    for (auto itr = gameObjects.begin(); itr != gameObjects.end(); itr++) {
+      auto &objects = itr->second;
+      for (auto objectItr = objects.begin(); objectItr != objects.end();) {
+        auto object = *objectItr;
+        if (object->toBeDestroyed)
+          objectItr = objects.erase(objectItr);
+        else
+          objectItr++;
+      }
+    }
 
     monitor.clear({0, 0, 0, 255});
     if (currentRoom != "") {
