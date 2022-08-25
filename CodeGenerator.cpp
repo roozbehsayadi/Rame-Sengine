@@ -13,6 +13,7 @@ void CodeGenerator::generate(std::map<std::string, Room> rooms, const std::strin
   this->generateGameHandlerClass(rooms);
   this->generateBaseClass();
   this->generateMakefile(rooms);
+  this->generateGlobalVariablesClass(rooms);
 }
 
 void CodeGenerator::copyRequiredClasses() const {
@@ -30,7 +31,7 @@ void CodeGenerator::generateMainCode(std::map<std::string, Room> rooms, const st
 
   std::string mainTemp = CodeGenerator::mainCode;
   auto initializationCommands = this->buildCreateObjectsSnippet(rooms);
-  CodeGenerator::replaceString(mainTemp, "${INCLUDE_ALL_OBJECTS}", generateGameHandlerIncludes(rooms));
+  CodeGenerator::replaceString(mainTemp, "${INCLUDE_ALL_OBJECTS}", generateAllObjectsIncludes(rooms));
   CodeGenerator::replaceString(mainTemp, "${LOOP_AND_CREATE_ALL_OBJECT_INSTANCES}", initializationCommands);
   CodeGenerator::replaceString(mainTemp, "${FIRST_ROOM_NAME}", firstRoom);
   fout << mainTemp;
@@ -110,6 +111,33 @@ void CodeGenerator::generateClassForObjects(std::map<std::string, Room> rooms) c
   }
 }
 
+void CodeGenerator::generateGlobalVariablesClass(std::map<std::string, Room> rooms) const {
+  std::ofstream fout;
+
+  fout.open("generatedGame/GlobalVariables.h");
+  if (!fout) {
+    std::cerr << "could not open file generatedGame/GlobalVariables.h\n";
+    std::exit(1);
+  }
+
+  std::string dotHTemp = CodeGenerator::globalVariablesDotHCode;
+  CodeGenerator::replaceString(dotHTemp, "${SPRITES}", buildSpriteStaticVariables(rooms));
+
+  fout << dotHTemp;
+  fout.close();
+
+  fout.open("generatedGame/GlobalVariables.cpp");
+  if (!fout) {
+    std::cerr << "could not open file generatedGame/GlobalVariables.cpp\n";
+    std::exit(1);
+  }
+
+  std::string temp = CodeGenerator::globalVariablesDotCppCode;
+  CodeGenerator::replaceString(temp, "${SPRITES}", buildSpriteStaticVariableInitializations(rooms));
+  fout << temp;
+  fout.close();
+}
+
 void CodeGenerator::generateGameHandlerClass(std::map<std::string, Room> rooms) const {
   std::ofstream fout;
 
@@ -120,7 +148,10 @@ void CodeGenerator::generateGameHandlerClass(std::map<std::string, Room> rooms) 
   }
 
   std::string dotHTemp = CodeGenerator::gameHandlerDotHCode;
-  CodeGenerator::replaceString(dotHTemp, "${INCLUDE_ALL_OBJECTS}", generateGameHandlerIncludes(rooms));
+  CodeGenerator::replaceString(dotHTemp, "${INCLUDE_ALL_OBJECTS}", generateAllObjectsIncludes(rooms));
+  CodeGenerator::replaceString(
+      dotHTemp, "${CREATE_FUNCTIONS_FOR_ALL_OBJECTS}",
+      generateGameHandlerCreateObjectDefinitions(CodeGenerator::extractObjectNamesFromRooms(rooms)));
   fout << dotHTemp;
   fout.close();
 
@@ -130,11 +161,48 @@ void CodeGenerator::generateGameHandlerClass(std::map<std::string, Room> rooms) 
     std::exit(1);
   }
 
-  fout << CodeGenerator::gameHandlerDotCppCode;
+  std::string temp = CodeGenerator::gameHandlerDotCppCode;
+  CodeGenerator::replaceString(temp, "${CREATE_OBJECT_FUNCTIONS_IMPLEMENTATIONS}",
+                               generateCreateFunctionForEachObject(CodeGenerator::extractObjectNamesFromRooms(rooms)));
+
+  fout << temp;
   fout.close();
 }
 
-const std::string CodeGenerator::generateGameHandlerIncludes(std::map<std::string, Room> rooms) const {
+const std::string CodeGenerator::generateGameHandlerCreateObjectDefinitions(std::set<std::string> objectNames) const {
+  std::string returnValue = "";
+  std::string functionTemplate =
+      R"(  void add${OBJECT_NAME}_ObjectClass(const std::string &, const std::string &, const Sprite &, double, double);
+)";
+  for (auto &objectName : objectNames) {
+    std::string temp = functionTemplate;
+    CodeGenerator::replaceString(temp, "${OBJECT_NAME}", objectName);
+    returnValue += temp;
+  }
+  return returnValue;
+}
+
+const std::string CodeGenerator::generateCreateFunctionForEachObject(std::set<std::string> objectNames) const {
+  std::string
+      returnValue = "",
+      functionTemplate =
+          R"(void GameHandler::add${OBJECT_NAME}_ObjectClass(const std::string &roomName, const std::string &instanceName, const Sprite &sprite, double x, double y) {
+  std::shared_ptr<${OBJECT_NAME}_ObjectClass> temp = std::make_shared<${OBJECT_NAME}_ObjectClass>(
+    "${OBJECT_NAME}", instanceName, sprite, x, y);
+  this->addObject(roomName, temp);
+}
+)";
+
+  for (auto &objectName : objectNames) {
+    std::string temp = functionTemplate;
+    CodeGenerator::replaceString(temp, "${OBJECT_NAME}", objectName);
+    returnValue += temp;
+  }
+
+  return returnValue;
+}
+
+const std::string CodeGenerator::generateAllObjectsIncludes(std::map<std::string, Room> rooms) const {
   std::set<std::string> objectNames;
   for (auto [roomName, room] : rooms) {
     auto objects = room.getObjects();
@@ -149,9 +217,57 @@ const std::string CodeGenerator::generateGameHandlerIncludes(std::map<std::strin
   return returnValue + "\n";
 }
 
+const std::string CodeGenerator::buildSpriteStaticVariables(std::map<std::string, Room> rooms) const {
+  std::string returnValue = "";
+  std::string variableTemplate =
+      R"(  static const Sprite ${SPRITE_NAME};
+)";
+
+  std::set<std::string> spriteNames;
+  for (auto &itr : rooms) {
+    auto objects = itr.second.getObjects();
+    for (auto &object : objects)
+      spriteNames.insert(object->getSprite().getName());
+  }
+
+  for (auto spriteName : spriteNames) {
+    std::string temp = variableTemplate;
+    CodeGenerator::replaceString(temp, "${SPRITE_NAME}", spriteName);
+    returnValue += temp;
+  }
+
+  return returnValue;
+}
+
+const std::string CodeGenerator::buildSpriteStaticVariableInitializations(std::map<std::string, Room> rooms) const {
+  std::string returnValue = "";
+  std::string variableTemplate =
+      R"(const Sprite GlobalVariables::${SPRITE_NAME} = Sprite("${SPRITE_NAME}", ${SPRITE_FPS}, ${SPRITE_FRAMES});
+)";
+
+  std::set<std::string> spriteNames;
+  for (auto &itr : rooms) {
+    auto objects = itr.second.getObjects();
+    for (auto &object : objects) {
+      if (!spriteNames.contains(object->getSprite().getName())) {
+        std::string temp = variableTemplate;
+        CodeGenerator::replaceString(temp, "${SPRITE_NAME}", object->getSprite().getName());
+        CodeGenerator::replaceString(temp, "${SPRITE_FPS}", std::to_string(object->getSprite().getFPS()));
+        CodeGenerator::replaceString(temp, "${SPRITE_FRAMES}",
+                                     CodeGenerator::vectorToString(object->getSprite().getFramePaths()));
+        returnValue += temp;
+
+        spriteNames.insert(object->getSprite().getName());
+      }
+    }
+  }
+
+  return returnValue;
+}
+
 const std::string CodeGenerator::buildCreateObjectsSnippet(std::map<std::string, Room> rooms) const {
   std::string oneIterationTemplate = R"(auto ${INSTANCE_NAME} = std::make_shared<${OBJECT_NAME}_ObjectClass>(
-      "${OBJECT_NAME}", "${INSTANCE_NAME}", Sprite("${SPRITE_NAME}", ${SPRITE_FPS}, ${SPRITE_FRAMES}), ${OBJECT_X}, ${OBJECT_Y});
+      "${OBJECT_NAME}", "${INSTANCE_NAME}", GlobalVariables::${SPRITE_NAME}, ${OBJECT_X}, ${OBJECT_Y});
   gameHandler.addObject("${ROOM_NAME}", ${INSTANCE_NAME});
 )";
   std::string returnValue = "";
@@ -161,9 +277,6 @@ const std::string CodeGenerator::buildCreateObjectsSnippet(std::map<std::string,
       CodeGenerator::replaceString(temp, "${OBJECT_NAME}", object->getName());
       CodeGenerator::replaceString(temp, "${INSTANCE_NAME}", object->getInstanceName());
       CodeGenerator::replaceString(temp, "${SPRITE_NAME}", object->getSprite().getName());
-      CodeGenerator::replaceString(temp, "${SPRITE_FPS}", std::to_string(object->getSprite().getFPS()));
-      CodeGenerator::replaceString(temp, "${SPRITE_FRAMES}",
-                                   CodeGenerator::vectorToString(object->getSprite().getFramePaths()));
       CodeGenerator::replaceString(temp, "${OBJECT_X}", std::to_string(object->getX()));
       CodeGenerator::replaceString(temp, "${OBJECT_Y}", std::to_string(object->getY()));
       CodeGenerator::replaceString(temp, "${ROOM_NAME}", roomName);
@@ -233,7 +346,7 @@ std::string CodeGenerator::buildMakefileBuildCommandsForObjects(std::set<std::st
 std::string CodeGenerator::makefileCode =
     R"(.PHONY: all run clean
 
-all: build/main.o build/BaseObjectClass.o build/GameHandler.o build/Sprite.o build/Image.o build/RuiMonitor.o build/Color.o build/Rect.o build/Geometry.o ${OBJECTS_OBJECT_FILES}
+all: build/main.o build/BaseObjectClass.o build/GameHandler.o build/Sprite.o build/Image.o build/RuiMonitor.o build/Color.o build/Rect.o build/Geometry.o build/GlobalVariables.o ${OBJECTS_OBJECT_FILES}
 	g++ -Ibuild build/*.o -o build/Game.out -Wall -g -O2 -std=c++2a -lSDL2 -lSDL2_ttf -lSDL2_image
 
 run:
@@ -266,6 +379,9 @@ build/Rect.o: utils/Rect.h utils/Rect.cpp
 build/Geometry.o: utils/Geometry.h utils/Geometry.cpp
 	g++ -std=c++2a -c -I. -o build/Geometry.o utils/Geometry.cpp
 
+build/GlobalVariables.o: GlobalVariables.h GlobalVariables.cpp
+	g++ -std=c++2a -c -I. -o build/GlobalVariables.o GlobalVariables.cpp
+
 ${BUILD_OBJECTS_OBJECT_FILES}
 clean:
 	rm -rf build/*.o build/*.gch build/*.out
@@ -276,6 +392,7 @@ std::string CodeGenerator::mainCode =
 #include <iostream>
 
 #include "GameHandler.h"
+#include "GlobalVariables.h"
 #include "monitor/RuiMonitor.h"
 
 #include "BaseObjectClass.h"
@@ -283,6 +400,7 @@ ${INCLUDE_ALL_OBJECTS}
 
 int main() {
   RuiMonitor monitor("Game");
+  
   GameHandler gameHandler(monitor);
 
   // create object instances
@@ -335,36 +453,36 @@ public:
     this->vy = newVelocity.second;
   }
 
-  virtual void createEvent();
-  virtual void destroyEvent();
+  virtual void createEvent(GameHandler &);
+  virtual void destroyEvent(GameHandler &);
 
-  virtual void stepEvent(); // runs before drawing
+  virtual void stepEvent(GameHandler &); // runs before drawing
 
   // mouse events
 
-  virtual void leftMouseDown();
-  virtual void rightMouseDown();
-  virtual void middleMouseDown();
+  virtual void leftMouseDown(GameHandler &);
+  virtual void rightMouseDown(GameHandler &);
+  virtual void middleMouseDown(GameHandler &);
 
-  virtual void leftMouseUp();
-  virtual void rightMouseUp();
-  virtual void middleMouseUp();
+  virtual void leftMouseUp(GameHandler &);
+  virtual void rightMouseUp(GameHandler &);
+  virtual void middleMouseUp(GameHandler &);
 
-  virtual void mouseMove();
+  virtual void mouseMove(GameHandler &);
 
-  virtual void mouseEnter();
-  virtual void mouseLeave();
+  virtual void mouseEnter(GameHandler &);
+  virtual void mouseLeave(GameHandler &);
 
   // end of mouse events
 
   // keyboard events
 
-  virtual void keyDown();
-  virtual void keyUp();
+  virtual void keyDown(GameHandler &);
+  virtual void keyUp(GameHandler &);
 
   // end of keyboard events
 
-  virtual void collidedWith(std::shared_ptr<BaseObjectClass>);
+  virtual void collidedWith(std::shared_ptr<BaseObjectClass>, GameHandler &);
 
 protected:
   // TODO maybe change objectName to an enum
@@ -374,7 +492,7 @@ protected:
   Sprite sprite;
 
   double x, y;
-  double vx, vy;
+  double vx = 0, vy = 0;
 
   bool toBeDestroyed = false;
   // only use it in keyboard event functions
@@ -398,28 +516,28 @@ BaseObjectClass::BaseObjectClass(const std::string &objectName, const std::strin
   this->y = y;
 }
 
-void BaseObjectClass::createEvent() {}
-void BaseObjectClass::destroyEvent() {}
+void BaseObjectClass::createEvent(GameHandler &) {}
+void BaseObjectClass::destroyEvent(GameHandler &) {}
 
-void BaseObjectClass::stepEvent() {}
+void BaseObjectClass::stepEvent(GameHandler &) {}
 
-void BaseObjectClass::leftMouseDown() {}
-void BaseObjectClass::rightMouseDown() {}
-void BaseObjectClass::middleMouseDown() {}
+void BaseObjectClass::leftMouseDown(GameHandler &) {}
+void BaseObjectClass::rightMouseDown(GameHandler &) {}
+void BaseObjectClass::middleMouseDown(GameHandler &) {}
 
-void BaseObjectClass::leftMouseUp() {}
-void BaseObjectClass::rightMouseUp() {}
-void BaseObjectClass::middleMouseUp() {}
+void BaseObjectClass::leftMouseUp(GameHandler &) {}
+void BaseObjectClass::rightMouseUp(GameHandler &) {}
+void BaseObjectClass::middleMouseUp(GameHandler &) {}
 
-void BaseObjectClass::mouseMove() {}
+void BaseObjectClass::mouseMove(GameHandler &) {}
 
-void BaseObjectClass::mouseEnter() {}
-void BaseObjectClass::mouseLeave() {}
+void BaseObjectClass::mouseEnter(GameHandler &) {}
+void BaseObjectClass::mouseLeave(GameHandler &) {}
 
-void BaseObjectClass::keyDown() {}
-void BaseObjectClass::keyUp() {}
+void BaseObjectClass::keyDown(GameHandler &) {}
+void BaseObjectClass::keyUp(GameHandler &) {}
 
-void BaseObjectClass::collidedWith(std::shared_ptr<BaseObjectClass>) {}
+void BaseObjectClass::collidedWith(std::shared_ptr<BaseObjectClass>, GameHandler &) {}
 )";
 
 std::string CodeGenerator::objectClassDotHCode =
@@ -432,6 +550,8 @@ std::string CodeGenerator::objectClassDotHCode =
 #include "SDL2/SDL_keycode.h"
 
 #include "BaseObjectClass.h"
+#include "GameHandler.h"
+#include "GlobalVariables.h"
 #include "Sprite.h"
 
 class ${OBJECT_NAME}_ObjectClass : public BaseObjectClass {
@@ -452,6 +572,29 @@ std::string CodeGenerator::objectClassDotCppCode = R"(
 // override events here by using BaseObjectClass's virtual functions
 )";
 
+std::string CodeGenerator::globalVariablesDotHCode =
+    R"(#ifndef __GLOBAL_VARIABLES_H
+#define __GLOBAL_VARIABLES_H
+
+#include "Sprite.h"
+
+class GlobalVariables {
+public:
+${SPRITES}
+  // you can also add your own variables here
+};
+
+#endif // __GLOBAL_VERIABLES_H
+)";
+
+std::string CodeGenerator::globalVariablesDotCppCode =
+    R"(
+#include "GlobalVariables.h"
+
+${SPRITES}
+
+)";
+
 std::string CodeGenerator::gameHandlerDotHCode =
     R"(#ifndef __GAME_HANDLER_H
 #define __GAME_HANDLER_H
@@ -468,6 +611,8 @@ std::string CodeGenerator::gameHandlerDotHCode =
 #include "monitor/RuiMonitor.h"
 #include "utils/Rect.h"
 
+${INCLUDE_ALL_OBJECTS}
+
 class GameHandler {
 public:
   GameHandler(RuiMonitor &monitor) : monitor(monitor) {}
@@ -479,13 +624,15 @@ public:
   // - the object itself
   void addObject(const std::string &, std::shared_ptr<BaseObjectClass>);
 
-  void render(std::shared_ptr<BaseObjectClass>);
+${CREATE_FUNCTIONS_FOR_ALL_OBJECTS}
 
   void setCurrentRoom(const std::string &);
 
 private:
   using allObjectsContainer = std::map<std::string, std::vector<std::shared_ptr<BaseObjectClass>>>;
-  using eventFunction = std::function<void(std::shared_ptr<BaseObjectClass> &)>;
+  using eventFunction = std::function<void(std::shared_ptr<BaseObjectClass> &, GameHandler &)>;
+
+  void render(std::shared_ptr<BaseObjectClass>);
 
   // arguments:
   // - isApplicable function
@@ -557,7 +704,7 @@ void GameHandler::start() {
     // move the objects (if they have vx or vy)
     this->runFunctionWithAllObjects(
         trueFunction,
-        [](std::shared_ptr<BaseObjectClass> object) {
+        [](std::shared_ptr<BaseObjectClass> object, GameHandler &) {
           object->setPosition({object->getPosition().first + object->getVelocity().first,
                                object->getPosition().second + object->getVelocity().second});
         },
@@ -584,8 +731,8 @@ void GameHandler::start() {
               double(objects.at(j)->sprite.getCurrentFrameSize().second),
           };
           if (Geometry::trimRect(object1Rect, object2Rect).second) {
-            objects.at(i)->collidedWith(objects.at(j));
-            objects.at(j)->collidedWith(objects.at(i));
+            objects.at(i)->collidedWith(objects.at(j), *this);
+            objects.at(j)->collidedWith(objects.at(i), *this);
           }
         }
       }
@@ -628,6 +775,8 @@ void GameHandler::render(std::shared_ptr<BaseObjectClass> object) {
                     currentFrame->getImagePath());
 }
 
+${CREATE_OBJECT_FUNCTIONS_IMPLEMENTATIONS}
+
 void GameHandler::setCurrentRoom(const std::string &roomName) { this->currentRoom = roomName; }
 
 void GameHandler::runFunctionWithAllObjects(std::function<bool(std::shared_ptr<BaseObjectClass>)> isApplicable,
@@ -639,7 +788,7 @@ void GameHandler::runFunctionWithAllObjects(std::function<bool(std::shared_ptr<B
     for (auto object : objects) {
       if (isApplicable(object)) {
         beforeEvent(object);
-        function(object);
+        function(object, *this);
         afterEvent(object);
       }
     }

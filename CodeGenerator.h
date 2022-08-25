@@ -35,8 +35,16 @@ private:
   void generateBaseClass() const;
   void generateClassForObjects(std::map<std::string, Room>) const;
 
+  void generateGlobalVariablesClass(std::map<std::string, Room>) const;
+
   void generateGameHandlerClass(std::map<std::string, Room>) const;
-  const std::string generateGameHandlerIncludes(std::map<std::string, Room>) const;
+  const std::string generateGameHandlerCreateObjectDefinitions(std::set<std::string>) const;
+  const std::string generateCreateFunctionForEachObject(std::set<std::string>) const;
+
+  const std::string generateAllObjectsIncludes(std::map<std::string, Room>) const;
+
+  const std::string buildSpriteStaticVariables(std::map<std::string, Room>) const;
+  const std::string buildSpriteStaticVariableInitializations(std::map<std::string, Room>) const;
 
   const std::string buildCreateObjectsSnippet(std::map<std::string, Room>) const;
 
@@ -58,6 +66,9 @@ private:
 
   static std::string objectClassDotHCode;
   static std::string objectClassDotCppCode;
+
+  static std::string globalVariablesDotHCode;
+  static std::string globalVariablesDotCppCode;
 
   static std::string gameHandlerDotHCode;
   static std::string gameHandlerDotCppCode;
