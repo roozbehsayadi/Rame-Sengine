@@ -31,6 +31,12 @@ std::vector<std::string> Sprite::getFramePaths() const {
   return returnValue;
 }
 
+std::pair<int, int> Sprite::getCurrentFrameSize() {
+  if (this->frames.size() == 0)
+    return {0, 0};
+  return this->frames.at(currentFrame)->getSize();
+}
+
 void Sprite::proceedFrame() {
   if (frames.size() == 0u)
     return;

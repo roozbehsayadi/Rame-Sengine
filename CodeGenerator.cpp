@@ -564,6 +564,32 @@ void GameHandler::start() {
         emptyFunction, emptyFunction);
 
     // handle collisions
+    for (auto itr = gameObjects.begin(); itr != gameObjects.end(); itr++) {
+      auto &objects = itr->second; // all objects in the current room
+      for (int i = 0u; i < objects.size(); i++) {
+        for (int j = i + 1; j < objects.size(); j++) {
+          if (i == j)
+            continue;
+
+          Rect object1Rect = {
+              objects.at(i)->getPosition().first,
+              objects.at(i)->getPosition().second,
+              double(objects.at(i)->sprite.getCurrentFrameSize().first),
+              double(objects.at(i)->sprite.getCurrentFrameSize().second),
+          };
+          Rect object2Rect = {
+              objects.at(j)->getPosition().first,
+              objects.at(j)->getPosition().second,
+              double(objects.at(j)->sprite.getCurrentFrameSize().first),
+              double(objects.at(j)->sprite.getCurrentFrameSize().second),
+          };
+          if (Geometry::trimRect(object1Rect, object2Rect).second) {
+            objects.at(i)->collidedWith(objects.at(j));
+            objects.at(j)->collidedWith(objects.at(i));
+          }
+        }
+      }
+    }
 
     // check object deletes
     for (auto itr = gameObjects.begin(); itr != gameObjects.end(); itr++) {
@@ -623,11 +649,10 @@ void GameHandler::runFunctionWithAllObjects(std::function<bool(std::shared_ptr<B
 void GameHandler::handleMouseUpDownEvents(SDL_Event event) {
   auto x = event.button.x, y = event.button.y;
   auto isApplicable = [x, y](std::shared_ptr<BaseObjectClass> object) {
-    SDL_Point size;
-    SDL_QueryTexture(object->sprite.getCurrentFrame()->getTexture(), nullptr, nullptr, &size.x, &size.y);
-    return Geometry::isPointInsideRect(
-        double(x), double(y),
-        {object->getPosition().first, object->getPosition().second, double(size.x), double(size.y)});
+    auto objectImageSize = object->sprite.getCurrentFrameSize();
+    return Geometry::isPointInsideRect(double(x), double(y),
+                                       {object->getPosition().first, object->getPosition().second,
+                                        double(objectImageSize.first), double(objectImageSize.second)});
   };
 
   auto emptyFunction = [](std::shared_ptr<BaseObjectClass>) {};
@@ -666,24 +691,22 @@ void GameHandler::handleMouseMoveEvents(SDL_Event event) {
   };
 
   auto mouseEnterIsApplicable = [x, y](std::shared_ptr<BaseObjectClass> object) {
-    SDL_Point size;
-    SDL_QueryTexture(object->sprite.getCurrentFrame()->getTexture(), nullptr, nullptr, &size.x, &size.y);
+    auto objectSize = object->sprite.getCurrentFrameSize();
     return !object->isMouseInside &&
-           Geometry::isPointInsideRect(
-               double(x), double(y),
-               {object->getPosition().first, object->getPosition().second, double(size.x), double(size.y)});
+           Geometry::isPointInsideRect(double(x), double(y),
+                                       {object->getPosition().first, object->getPosition().second,
+                                        double(objectSize.first), double(objectSize.second)});
   };
 
   this->runFunctionWithAllObjects(mouseEnterIsApplicable, GameHandler::eventFunctions.at("mouseEnter"), emptyFunction,
                                   revertIsMouseInside);
 
   auto mouseLeaveIsApplicable = [x, y](std::shared_ptr<BaseObjectClass> object) {
-    SDL_Point size;
-    SDL_QueryTexture(object->sprite.getCurrentFrame()->getTexture(), nullptr, nullptr, &size.x, &size.y);
+    auto objectSize = object->sprite.getCurrentFrameSize();
     return object->isMouseInside &&
-           !Geometry::isPointInsideRect(
-               double(x), double(y),
-               {object->getPosition().first, object->getPosition().second, double(size.x), double(size.y)});
+           !Geometry::isPointInsideRect(double(x), double(y),
+                                        {object->getPosition().first, object->getPosition().second,
+                                         double(objectSize.first), double(objectSize.second)});
   };
 
   this->runFunctionWithAllObjects(mouseLeaveIsApplicable, GameHandler::eventFunctions.at("mouseLeave"), emptyFunction,

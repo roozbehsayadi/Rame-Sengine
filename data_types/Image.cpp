@@ -18,3 +18,11 @@ SDL_Texture *Image::renderAndGetTexture(SDL_Renderer *renderer) {
   }
   return texture;
 }
+
+std::pair<int, int> Image::getSize() {
+  if (this->texture == nullptr)
+    return {0, 0};
+  SDL_Point size;
+  SDL_QueryTexture(this->texture, nullptr, nullptr, &size.x, &size.y);
+  return {size.x, size.y};
+}

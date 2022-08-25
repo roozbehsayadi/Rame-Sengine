@@ -21,6 +21,8 @@ public:
   SDL_Texture *renderAndGetTexture(SDL_Renderer *);
   SDL_Texture *&getTexture() { return this->texture; }
 
+  std::pair<int, int> getSize();
+
 private:
   std::string imagePath;
   SDL_Texture *texture = nullptr;

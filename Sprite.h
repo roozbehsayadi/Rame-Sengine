@@ -30,6 +30,8 @@ public:
   std::shared_ptr<Image> getCurrentFrameAndProceed();
   std::vector<std::string> getFramePaths() const;
 
+  std::pair<int, int> getCurrentFrameSize();
+
   void proceedFrame();
 
   void removeFrame(int);
