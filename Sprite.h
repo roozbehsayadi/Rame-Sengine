@@ -22,6 +22,8 @@ public:
     }
   }
 
+  bool operator==(const Sprite &other) { return this->name == other.name; }
+
   void insertFrame(const std::string &);
   void insertFrame(int, const std::string &);
 
