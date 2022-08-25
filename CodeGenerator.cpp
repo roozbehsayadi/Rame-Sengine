@@ -799,8 +799,10 @@ void GameHandler::start() {
       auto &objects = itr->second;
       for (auto objectItr = objects.begin(); objectItr != objects.end();) {
         auto object = *objectItr;
-        if (object->toBeDestroyed)
+        if (object->toBeDestroyed) {
+          objectItr->get()->destroyEvent(*this);
           objectItr = objects.erase(objectItr);
+        }
         else
           objectItr++;
       }
@@ -821,6 +823,7 @@ void GameHandler::addObject(const std::string &roomName, std::shared_ptr<BaseObj
   if (!gameObjects.contains(roomName))
     gameObjects.insert({roomName, {}});
   gameObjects.find(roomName)->second.push_back(object);
+  object->createEvent(*this);
 }
 
 void GameHandler::render(std::shared_ptr<BaseObjectClass> object) {
